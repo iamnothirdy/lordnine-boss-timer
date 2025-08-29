@@ -23,6 +23,139 @@ SPAWN_TIMERS_FILE = "spawn_timers.json"
 def load_bosses():
     with open(BOSSES_FILE, "r") as f:
         data = json.load(f)
+        # normalize keys for case-insensitive search
+        return {b["name"].lower(): b for b in data}
+
+def load_spawn_timers():
+    if os.path.exists(SPAWN_TIMERS_FILE):
+        with open(SPAWN_TIMERS_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_spawn_timers(data):
+    with open(SPAWN_TIMERS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+# Helper: parse time string to datetime
+def parse_time(timestr):
+    try:
+        return datetime.strptime(timestr, "%Y-%m-%d %I:%M %p")
+    except:
+        return None
+
+bosses = load_bosses()
+spawn_timers = load_spawn_timers()
+
+@bot.event
+async def on_ready():
+    print(f"✅ Logged in as {bot.user}")
+
+# /kill command
+@bot.command()
+async def kill(ctx, name: str, killed_at: str):
+    """
+    Usage: /kill [bossname] [HHMMPM] e.g. /kill Undomiel 05:32PM
+    """
+    key = name.lower()
+    if key not in bosses:
+        await ctx.send(f"❌ Boss '{name}' not found in list.")
+        return
+
+    try:
+        killed_time = datetime.strptime(killed_at, "%I:%M%p")
+        # add current date
+        killed_time = killed_time.replace(year=datetime.now().year,
+                                          month=datetime.now().month,
+                                          day=datetime.now().day)
+    except ValueError:
+        await ctx.send("⚠️ Invalid time format. Use AM/PM like `05:32PM`.")
+        return
+
+    respawn_seconds = bosses[key].get("respawn", 0)
+    next_spawn = killed_time + timedelta(seconds=respawn_seconds)
+
+    spawn_timers[key] = {
+        "last_killed": killed_time.strftime("%Y-%m-%d %I:%M %p"),
+        "next_spawn": next_spawn.strftime("%Y-%m-%d %I:%M %p")
+    }
+    save_spawn_timers(spawn_timers)
+
+    await ctx.send(
+        f"☠️ **{name.title()}** was killed at {killed_time.strftime('%I:%M %p')}.\n"
+        f"🕒 Next spawn: **{next_spawn.strftime('%I:%M %p')}**"
+    )
+
+# /info command
+@bot.command()
+async def info(ctx, *, name: str):
+    key = name.lower()
+    if key not in bosses:
+        await ctx.send(f"❌ Boss '{name}' not found.")
+        return
+
+    last = spawn_timers.get(key, {}).get("last_killed", "No info yet")
+    next_spawn = spawn_timers.get(key, {}).get("next_spawn", "No info yet")
+
+    embed = discord.Embed(title=f"📜 Info for {name.title()}", color=0x00FFFF)
+    embed.add_field(name="☠️ Last killed", value=last, inline=True)
+    embed.add_field(name="🕒 Next spawn", value=next_spawn, inline=True)
+
+    await ctx.send(embed=embed)
+
+# /next command
+@bot.command()
+async def next(ctx):
+    now = datetime.now()
+    upcoming_bosses = []
+
+    for key, boss in bosses.items():
+        timer = spawn_timers.get(key, {})
+        spawn_time_str = timer.get("next_spawn")
+        spawn_time = parse_time(spawn_time_str) if spawn_time_str else None
+        upcoming_bosses.append((key, spawn_time))
+
+    # Sort: earliest first, None at end
+    upcoming_bosses.sort(key=lambda x: x[1] if x[1] else datetime.max)
+
+    embed = discord.Embed(title="🕒 Next Bosses to Spawn", color=0x00FFFF)
+    for i, (key, spawn_time) in enumerate(upcoming_bosses[:5]):
+        if spawn_time:
+            time_str = spawn_time.strftime("%I:%M %p")
+            if i == 0:
+                embed.add_field(name=f"⏳ **{key.title()}**", value=f"🟩 {time_str}", inline=False)
+            else:
+                embed.add_field(name=key.title(), value=f"🟩 {time_str}", inline=False)
+        else:
+            embed.add_field(name=key.title(), value="No info yet", inline=False)
+
+    await ctx.send(embed=embed)
+
+bot.run(TOKEN)
+import discord
+from discord.ext import commands
+import json
+import os
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables (DISCORD_TOKEN from .env)
+load_dotenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+# Enable message content intent (required for commands)
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix="/", intents=intents)
+
+# Files
+BOSSES_FILE = "bosses.json"
+SPAWN_TIMERS_FILE = "spawn_timers.json"
+
+# Load boss data
+def load_bosses():
+    with open(BOSSES_FILE, "r") as f:
+        data = json.load(f)
     # Convert names to lowercase for easier matching
     return {boss["name"].lower(): boss for boss in data}
 
