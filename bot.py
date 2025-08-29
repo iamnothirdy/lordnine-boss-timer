@@ -1,3 +1,350 @@
+import discord
+from discord.ext import commands
+import json
+import os
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+# Intents
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix="/", intents=intents)
+
+# Files
+BOSSES_FILE = "bosses.json"
+SPAWN_TIMERS_FILE = "spawn_timers.json"
+
+# Load data
+def load_bosses():
+    with open(BOSSES_FILE, "r") as f:
+        return json.load(f)
+
+def load_spawn_timers():
+    if os.path.exists(SPAWN_TIMERS_FILE):
+        with open(SPAWN_TIMERS_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_spawn_timers(data):
+    with open(SPAWN_TIMERS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+bosses_list = load_bosses()
+spawn_timers = load_spawn_timers()
+
+# Normalize names (remove spaces, lowercase)
+def normalize_name(name: str):
+    return name.lower().replace(" ", "")
+
+# Map normalized names to boss data
+bosses = {normalize_name(b["name"]): b for b in bosses_list}
+
+# Helper to parse time in AM/PM format
+def parse_time_str(time_str: str):
+    try:
+        return datetime.strptime(time_str, "%I:%M%p")
+    except ValueError:
+        return None
+
+# Helper to format datetime in AM/PM
+def fmt(dt: datetime):
+    return dt.strftime("%Y-%m-%d %I:%M %p")
+
+# Calculate next spawn for a boss
+def get_next_spawn(name_norm: str):
+    boss = bosses[name_norm]
+    timer = spawn_timers.get(name_norm)
+    now = datetime.now()
+
+    if timer:
+        last_killed = datetime.strptime(timer["last_killed"], "%Y-%m-%d %I:%M %p")
+        next_spawn = datetime.strptime(timer["next_spawn"], "%Y-%m-%d %I:%M %p")
+        if now >= next_spawn:
+            status = "alive"
+        else:
+            status = "upcoming"
+        return status, last_killed, next_spawn
+    else:
+        # No info yet
+        return "no_info", None, None
+
+# Events
+@bot.event
+async def on_ready():
+    print(f"✅ Logged in as {bot.user}")
+
+# /kill command
+@bot.command()
+async def kill(ctx, *args):
+    if len(args) < 2:
+        await ctx.send("⚠️ Usage: /kill [boss name] [HH:MMAM/PM]")
+        return
+
+    killed_at_str = args[-1]
+    name = " ".join(args[:-1])
+    name_norm = normalize_name(name)
+
+    if name_norm not in bosses:
+        await ctx.send(f"❌ Boss '{name}' not found.")
+        return
+
+    killed_time = parse_time_str(killed_at_str)
+    if not killed_time:
+        await ctx.send("⚠️ Invalid time format. Use HH:MMAM/PM, e.g., 06:00PM.")
+        return
+
+    # Use today for killed time
+    now = datetime.now()
+    killed_time = killed_time.replace(year=now.year, month=now.month, day=now.day)
+
+    respawn_sec = bosses[name_norm].get("respawn")
+    if respawn_sec:
+        next_spawn = killed_time + timedelta(seconds=respawn_sec)
+    else:
+        next_spawn = None
+
+    spawn_timers[name_norm] = {
+        "last_killed": fmt(killed_time),
+        "next_spawn": fmt(next_spawn) if next_spawn else "N/A"
+    }
+    save_spawn_timers(spawn_timers)
+
+    embed = discord.Embed(title=f"☠️ {name} killed!", color=discord.Color.red())
+    embed.add_field(name="Killed at", value=fmt(killed_time), inline=True)
+    embed.add_field(name="Next spawn", value=fmt(next_spawn) if next_spawn else "N/A", inline=True)
+    await ctx.send(embed=embed)
+
+# /info command
+@bot.command()
+async def info(ctx, *args):
+    if len(args) < 1:
+        await ctx.send("⚠️ Usage: /info [boss name]")
+        return
+
+    name = " ".join(args)
+    name_norm = normalize_name(name)
+
+    if name_norm not in bosses:
+        await ctx.send(f"❌ Boss '{name}' not found.")
+        return
+
+    status, last_killed, next_spawn = get_next_spawn(name_norm)
+
+    embed = discord.Embed(title=f"📜 Info for {name}", color=discord.Color.blue())
+    embed.add_field(name="Last killed", value=fmt(last_killed) if last_killed else "No info yet", inline=True)
+    embed.add_field(name="Next spawn", value=fmt(next_spawn) if next_spawn else "No info yet", inline=True)
+    await ctx.send(embed=embed)
+
+# /next command
+@bot.command()
+async def next(ctx):
+    now = datetime.now()
+    embed = discord.Embed(title="🕒 Next Boss Spawn", color=discord.Color.green())
+
+    next_boss_name = None
+    next_boss_time = None
+
+    for name_norm, boss in bosses.items():
+        status, last_killed, next_spawn = get_next_spawn(name_norm)
+
+        # Determine upcoming spawn for highlighting
+        if status == "upcoming":
+            if not next_boss_time or next_spawn < next_boss_time:
+                next_boss_time = next_spawn
+                next_boss_name = name_norm
+
+    for name_norm, boss in bosses.items():
+        status, last_killed, next_spawn = get_next_spawn(name_norm)
+        display_name = boss["name"]
+
+        if status == "alive":
+            value = "💥 **Alive Now!**"
+            field_color = discord.Color.red()
+        elif status == "upcoming":
+            value = f"Last killed: {fmt(last_killed)}\nNext spawn: {fmt(next_spawn)}"
+            if name_norm == next_boss_name:
+                value = f"⭐ **Next to spawn!**\n{value}"
+                field_color = discord.Color.gold()
+            else:
+                field_color = discord.Color.green()
+        else:
+            value = "No info yet"
+            field_color = discord.Color.greyple()
+
+        embed.add_field(name=display_name, value=value, inline=False)
+
+    await ctx.send(embed=embed)
+
+bot.run(TOKEN)
+import discord
+from discord.ext import commands
+import json
+import os
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+# Intents
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix="/", intents=intents)
+
+# Files
+BOSSES_FILE = "bosses.json"
+SPAWN_TIMERS_FILE = "spawn_timers.json"
+
+# Load data
+def load_bosses():
+    with open(BOSSES_FILE, "r") as f:
+        return json.load(f)
+
+def load_spawn_timers():
+    if os.path.exists(SPAWN_TIMERS_FILE):
+        with open(SPAWN_TIMERS_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_spawn_timers(data):
+    with open(SPAWN_TIMERS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+bosses_list = load_bosses()
+spawn_timers = load_spawn_timers()
+
+# Normalize names (remove spaces, lowercase)
+def normalize_name(name: str):
+    return name.lower().replace(" ", "")
+
+# Map normalized names to boss data
+bosses = {normalize_name(b["name"]): b for b in bosses_list}
+
+# Helper to parse time in AM/PM format
+def parse_time_str(time_str: str):
+    try:
+        return datetime.strptime(time_str, "%I:%M%p")
+    except ValueError:
+        return None
+
+# Helper to format datetime in AM/PM
+def fmt(dt: datetime):
+    return dt.strftime("%Y-%m-%d %I:%M %p")
+
+# Calculate next spawn for a boss
+def get_next_spawn(name_norm: str):
+    boss = bosses[name_norm]
+    timer = spawn_timers.get(name_norm)
+    now = datetime.now()
+
+    if timer:
+        last_killed = datetime.strptime(timer["last_killed"], "%Y-%m-%d %I:%M %p")
+        next_spawn = datetime.strptime(timer["next_spawn"], "%Y-%m-%d %I:%M %p")
+        if now >= next_spawn:
+            status = "alive"
+        else:
+            status = "upcoming"
+        return status, last_killed, next_spawn
+    else:
+        # No info yet
+        return "no_info", None, None
+
+# Events
+@bot.event
+async def on_ready():
+    print(f"✅ Logged in as {bot.user}")
+
+# /kill command
+@bot.command()
+async def kill(ctx, *args):
+    if len(args) < 2:
+        await ctx.send("⚠️ Usage: /kill [boss name] [HH:MMAM/PM]")
+        return
+
+    killed_at_str = args[-1]
+    name = " ".join(args[:-1])
+    name_norm = normalize_name(name)
+
+    if name_norm not in bosses:
+        await ctx.send(f"❌ Boss '{name}' not found.")
+        return
+
+    killed_time = parse_time_str(killed_at_str)
+    if not killed_time:
+        await ctx.send("⚠️ Invalid time format. Use HH:MMAM/PM, e.g., 06:00PM.")
+        return
+
+    # Use today for killed time
+    now = datetime.now()
+    killed_time = killed_time.replace(year=now.year, month=now.month, day=now.day)
+
+    respawn_sec = bosses[name_norm].get("respawn")
+    if respawn_sec:
+        next_spawn = killed_time + timedelta(seconds=respawn_sec)
+    else:
+        next_spawn = None
+
+    spawn_timers[name_norm] = {
+        "last_killed": fmt(killed_time),
+        "next_spawn": fmt(next_spawn) if next_spawn else "N/A"
+    }
+    save_spawn_timers(spawn_timers)
+
+    embed = discord.Embed(title=f"☠️ {name} killed!", color=discord.Color.red())
+    embed.add_field(name="Killed at", value=fmt(killed_time), inline=True)
+    embed.add_field(name="Next spawn", value=fmt(next_spawn) if next_spawn else "N/A", inline=True)
+    await ctx.send(embed=embed)
+
+# /info command
+@bot.command()
+async def info(ctx, *args):
+    if len(args) < 1:
+        await ctx.send("⚠️ Usage: /info [boss name]")
+        return
+
+    name = " ".join(args)
+    name_norm = normalize_name(name)
+
+    if name_norm not in bosses:
+        await ctx.send(f"❌ Boss '{name}' not found.")
+        return
+
+    status, last_killed, next_spawn = get_next_spawn(name_norm)
+
+    embed = discord.Embed(title=f"📜 Info for {name}", color=discord.Color.blue())
+    embed.add_field(name="Last killed", value=fmt(last_killed) if last_killed else "No info yet", inline=True)
+    embed.add_field(name="Next spawn", value=fmt(next_spawn) if next_spawn else "No info yet", inline=True)
+    await ctx.send(embed=embed)
+
+# /next command
+@bot.command()
+async def next(ctx):
+    now = datetime.now()
+    embed = discord.Embed(title="🕒 Next Boss Spawn", color=discord.Color.green())
+
+    for name_norm, boss in bosses.items():
+        status, last_killed, next_spawn = get_next_spawn(name_norm)
+        display_name = boss["name"]
+
+        if status == "alive":
+            value = "💥 **Alive Now!**"
+        elif status == "upcoming":
+            value = f"Last killed: {fmt(last_killed)}\nNext spawn: {fmt(next_spawn)}"
+        else:
+            value = "No info yet"
+
+        embed.add_field(name=display_name, value=value, inline=False)
+
+    await ctx.send(embed=embed)
+
+bot.run(TOKEN)
 2025-08-29 18:22:31 ERROR    discord.ext.commands.bot Ignoring exception in command next
 Traceback (most recent call last):
   File "/Users/ciriacogelera/Documents/lordnine_boss/discord-bot/lordnine/venv/lib/python3.13/site-packages/discord/ext/commands/core.py", line 235, in wrapped
@@ -332,6 +679,170 @@ async def next(ctx):
     embed = discord.Embed(title="🕒 Next Boss Spawns", color=discord.Color.gold())
 
     alive_bosses = []
+import discord
+from discord.ext import commands
+import json
+import os
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+# Intents
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix="/", intents=intents)
+
+# Files
+BOSSES_FILE = "bosses.json"
+SPAWN_TIMERS_FILE = "spawn_timers.json"
+
+# Load data
+def load_bosses():
+    with open(BOSSES_FILE, "r") as f:
+        return json.load(f)
+
+def load_spawn_timers():
+    if os.path.exists(SPAWN_TIMERS_FILE):
+        with open(SPAWN_TIMERS_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_spawn_timers(data):
+    with open(SPAWN_TIMERS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+bosses_list = load_bosses()
+spawn_timers = load_spawn_timers()
+
+# Normalize names (remove spaces, lowercase)
+def normalize_name(name: str):
+    return name.lower().replace(" ", "")
+
+# Map normalized names to boss data
+bosses = {normalize_name(b["name"]): b for b in bosses_list}
+
+# Helper to parse time in AM/PM format
+def parse_time_str(time_str: str):
+    try:
+        return datetime.strptime(time_str, "%I:%M%p")
+    except ValueError:
+        return None
+
+# Helper to format datetime in AM/PM
+def fmt(dt: datetime):
+    return dt.strftime("%Y-%m-%d %I:%M %p")
+
+# Calculate next spawn for a boss
+def get_next_spawn(name_norm: str):
+    boss = bosses[name_norm]
+    timer = spawn_timers.get(name_norm)
+    now = datetime.now()
+
+    if timer:
+        last_killed = datetime.strptime(timer["last_killed"], "%Y-%m-%d %I:%M %p")
+        next_spawn = datetime.strptime(timer["next_spawn"], "%Y-%m-%d %I:%M %p")
+        if now >= next_spawn:
+            status = "alive"
+        else:
+            status = "upcoming"
+        return status, last_killed, next_spawn
+    else:
+        # No info yet
+        return "no_info", None, None
+
+# Events
+@bot.event
+async def on_ready():
+    print(f"✅ Logged in as {bot.user}")
+
+# /kill command
+@bot.command()
+async def kill(ctx, *args):
+    if len(args) < 2:
+        await ctx.send("⚠️ Usage: /kill [boss name] [HH:MMAM/PM]")
+        return
+
+    killed_at_str = args[-1]
+    name = " ".join(args[:-1])
+    name_norm = normalize_name(name)
+
+    if name_norm not in bosses:
+        await ctx.send(f"❌ Boss '{name}' not found.")
+        return
+
+    killed_time = parse_time_str(killed_at_str)
+    if not killed_time:
+        await ctx.send("⚠️ Invalid time format. Use HH:MMAM/PM, e.g., 06:00PM.")
+        return
+
+    # Use today for killed time
+    now = datetime.now()
+    killed_time = killed_time.replace(year=now.year, month=now.month, day=now.day)
+
+    respawn_sec = bosses[name_norm].get("respawn")
+    if respawn_sec:
+        next_spawn = killed_time + timedelta(seconds=respawn_sec)
+    else:
+        next_spawn = None
+
+    spawn_timers[name_norm] = {
+        "last_killed": fmt(killed_time),
+        "next_spawn": fmt(next_spawn) if next_spawn else "N/A"
+    }
+    save_spawn_timers(spawn_timers)
+
+    embed = discord.Embed(title=f"☠️ {name} killed!", color=discord.Color.red())
+    embed.add_field(name="Killed at", value=fmt(killed_time), inline=True)
+    embed.add_field(name="Next spawn", value=fmt(next_spawn) if next_spawn else "N/A", inline=True)
+    await ctx.send(embed=embed)
+
+# /info command
+@bot.command()
+async def info(ctx, *args):
+    if len(args) < 1:
+        await ctx.send("⚠️ Usage: /info [boss name]")
+        return
+
+    name = " ".join(args)
+    name_norm = normalize_name(name)
+
+    if name_norm not in bosses:
+        await ctx.send(f"❌ Boss '{name}' not found.")
+        return
+
+    status, last_killed, next_spawn = get_next_spawn(name_norm)
+
+    embed = discord.Embed(title=f"📜 Info for {name}", color=discord.Color.blue())
+    embed.add_field(name="Last killed", value=fmt(last_killed) if last_killed else "No info yet", inline=True)
+    embed.add_field(name="Next spawn", value=fmt(next_spawn) if next_spawn else "No info yet", inline=True)
+    await ctx.send(embed=embed)
+
+# /next command
+@bot.command()
+async def next(ctx):
+    now = datetime.now()
+    embed = discord.Embed(title="🕒 Next Boss Spawn", color=discord.Color.green())
+
+    for name_norm, boss in bosses.items():
+        status, last_killed, next_spawn = get_next_spawn(name_norm)
+        display_name = boss["name"]
+
+        if status == "alive":
+            value = "💥 **Alive Now!**"
+        elif status == "upcoming":
+            value = f"Last killed: {fmt(last_killed)}\nNext spawn: {fmt(next_spawn)}"
+        else:
+            value = "No info yet"
+
+        embed.add_field(name=display_name, value=value, inline=False)
+
+    await ctx.send(embed=embed)
+
+bot.run(TOKEN)
     upcoming_bosses = []
 
     for name_norm, boss in bosses.items():
