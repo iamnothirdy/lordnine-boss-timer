@@ -1,92 +1,98 @@
 import discord
 from discord.ext import commands
 import json
-import datetime
-import asyncio
+import os
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables (DISCORD_TOKEN from .env)
+load_dotenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+# Enable message content intent (required for commands)
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix="/", intents=intents)
 
 # Load boss data
-with open("bosses.json", "r") as f:
-    bosses = json.load(f)
+BOSSES_FILE = "bosses.json"
+SPAWN_TIMERS_FILE = "spawn_timers.json"
 
-intents = discord.Intents.default()
-bot = commands.Bot(command_prefix="!", intents=intents)
+def load_bosses():
+    with open(BOSSES_FILE, "r") as f:
+        return json.load(f)
 
-# --------------------------
-# Helper functions
-# --------------------------
+def load_spawn_timers():
+    if os.path.exists(SPAWN_TIMERS_FILE):
+        with open(SPAWN_TIMERS_FILE, "r") as f:
+            return json.load(f)
+    return {}
 
-def get_boss(name):
-    """Find boss by name (case insensitive)."""
-    for boss in bosses:
-        if boss["name"].lower() == name.lower():
-            return boss
-    return None
+def save_spawn_timers(data):
+    with open(SPAWN_TIMERS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
 
-def format_time(seconds):
-    """Convert seconds into H:M:S."""
-    return str(datetime.timedelta(seconds=seconds))
-
-# --------------------------
-# Slash commands
-# --------------------------
+bosses = load_bosses()
+spawn_timers = load_spawn_timers()
 
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
-@bot.tree.command(name="kill", description="Mark a boss as killed and reset its timer")
-async def kill(interaction: discord.Interaction, boss_name: str):
-    boss = get_boss(boss_name)
-    if not boss:
-        await interaction.response.send_message(f"❌ Boss '{boss_name}' not found.", ephemeral=True)
+# /kill command
+@bot.command()
+async def kill(ctx, name: str, killed_at: str):
+    """
+    Usage: /kill [bossname] [HHMMH] e.g. /kill orfen 1700H
+    """
+    name = name.lower()
+    if name not in bosses:
+        await ctx.send(f"❌ Boss '{name}' not found in list.")
         return
 
-    if boss.get("special"):
-        await interaction.response.send_message(f"⚠️ {boss['name']} is a scheduled boss, not a respawn boss.", ephemeral=True)
+    try:
+        killed_time = datetime.strptime(killed_at, "%H%MH")
+    except ValueError:
+        await ctx.send("⚠️ Invalid time format. Use military time like `1700H`.")
         return
 
-    now = datetime.datetime.utcnow()
-    respawn = boss["respawn"]
-    next_spawn = now + datetime.timedelta(seconds=respawn)
+    respawn_minutes = bosses[name]["respawn"]
+    next_spawn = killed_time + timedelta(minutes=respawn_minutes)
 
-    boss["nextSpawn"] = next_spawn.strftime("%I:%M %p UTC")
+    spawn_timers[name] = {
+        "last_killed": killed_time.strftime("%Y-%m-%d %H:%M"),
+        "next_spawn": next_spawn.strftime("%Y-%m-%d %H:%M")
+    }
+    save_spawn_timers(spawn_timers)
 
-    # Save update
-    with open("bosses.json", "w") as f:
-        json.dump(bosses, f, indent=2)
-
-    await interaction.response.send_message(
-        f"☠️ {boss['name']} marked as killed!\nNext spawn at **{boss['nextSpawn']}**."
+    await ctx.send(
+        f"☠️ {name.capitalize()} was killed at {killed_time.strftime('%H:%M')}.\n"
+        f"🕒 Next spawn: **{next_spawn.strftime('%H:%M')}**"
     )
 
-@bot.tree.command(name="info", description="Get info about a boss")
-async def info(interaction: discord.Interaction, boss_name: str):
-    boss = get_boss(boss_name)
-    if not boss:
-        await interaction.response.send_message(f"❌ Boss '{boss_name}' not found.", ephemeral=True)
+# /info command
+@bot.command()
+async def info(ctx, name: str):
+    """
+    Usage: /info [bossname]
+    """
+    name = name.lower()
+    if name not in bosses:
+        await ctx.send(f"❌ Boss '{name}' not found.")
         return
 
-    if boss.get("special"):
-        schedule = "\n".join(
-            [f"Day {s['day']} at {s['hour']:02d}:{s['minute']:02d}" for s in boss["schedule"]]
-        )
-        await interaction.response.send_message(
-            f"📅 **{boss['name']}** is a scheduled boss.\nSchedule:\n{schedule}"
-        )
-    else:
-        next_spawn = boss.get("nextSpawn", "Unknown")
-        respawn = format_time(boss["respawn"])
-        await interaction.response.send_message(
-            f"🐉 **{boss['name']}**\nRespawn every: {respawn}\nNext spawn: {next_spawn}"
-        )
+    if name not in spawn_timers:
+        await ctx.send(f"ℹ️ No spawn data recorded for {name.capitalize()} yet.")
+        return
 
-# --------------------------
-# Run the bot
-# --------------------------
-if __name__ == "__main__":
-    import os
-    TOKEN = "MTQxMDkwMzE0Mzk4MTc3Njk1OA.GUH9_v.E2qTLik02RuvVoNEgPRYA06mP04dXMH-uu9mho" # safer to use environment variable
-    if not TOKEN:
-        print("❌ No token found. Please set DISCORD_TOKEN in your environment.")
-    else:
-        bot.run(TOKEN)
+    last = spawn_timers[name]["last_killed"]
+    next_spawn = spawn_timers[name]["next_spawn"]
+
+    await ctx.send(
+        f"📜 Info for {name.capitalize()}:\n"
+        f"☠️ Last killed: {last}\n"
+        f"🕒 Next spawn: {next_spawn}"
+    )
+
+bot.run(TOKEN)
