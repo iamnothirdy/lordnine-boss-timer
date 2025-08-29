@@ -5,6 +5,131 @@ import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
+# Load environment variables (DISCORD_TOKEN from .env)
+load_dotenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+# Enable message content intent (required for commands)
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix="/", intents=intents)
+
+# Files
+BOSSES_FILE = "bosses.json"
+SPAWN_TIMERS_FILE = "spawn_timers.json"
+
+# Load boss data
+def load_bosses():
+    with open(BOSSES_FILE, "r") as f:
+        data = json.load(f)
+    # Convert names to lowercase for easier matching
+    return {boss["name"].lower(): boss for boss in data}
+
+def load_spawn_timers():
+    if os.path.exists(SPAWN_TIMERS_FILE):
+        with open(SPAWN_TIMERS_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_spawn_timers(data):
+    with open(SPAWN_TIMERS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+bosses = load_bosses()
+spawn_timers = load_spawn_timers()
+
+@bot.event
+async def on_ready():
+    print(f"✅ Logged in as {bot.user}")
+
+# /kill command
+@bot.command()
+async def kill(ctx, *, name: str):
+    """
+    Usage: /kill [bossname]
+    """
+    name_key = name.lower()
+    if name_key not in bosses:
+        await ctx.send(f"❌ Boss '{name}' not found in list.")
+        return
+
+    killed_time = datetime.now()
+    boss = bosses[name_key]
+
+    if "respawn" in boss:
+        respawn_seconds = boss["respawn"]
+        next_spawn = killed_time + timedelta(seconds=respawn_seconds)
+    else:
+        await ctx.send(f"⚠️ Boss '{name.title()}' does not have a respawn timer.")
+        return
+
+    spawn_timers[name_key] = {
+        "last_killed": killed_time.strftime("%Y-%m-%d %I:%M %p"),
+        "next_spawn": next_spawn.strftime("%Y-%m-%d %I:%M %p")
+    }
+    save_spawn_timers(spawn_timers)
+
+    await ctx.send(
+        f"☠️ {name.title()} was killed at {killed_time.strftime('%I:%M %p')}.\n"
+        f"🕒 Next spawn: **{next_spawn.strftime('%I:%M %p')}**"
+    )
+
+# /info command
+@bot.command()
+async def info(ctx, *, name: str):
+    """
+    Usage: /info [bossname]
+    """
+    name_key = name.lower()
+    if name_key not in bosses:
+        await ctx.send(f"❌ Boss '{name}' not found.")
+        return
+
+    if name_key not in spawn_timers:
+        await ctx.send(f"ℹ️ No spawn data recorded for {name.title()} yet.")
+        return
+
+    last = spawn_timers[name_key]["last_killed"]
+    next_spawn = spawn_timers[name_key]["next_spawn"]
+
+    await ctx.send(
+        f"📜 Info for {name.title()}:\n"
+        f"☠️ Last killed: {last}\n"
+        f"🕒 Next spawn: {next_spawn}"
+    )
+
+# /next command
+@bot.command()
+async def next(ctx):
+    """
+    Shows the next boss to spawn based on current time
+    """
+    now = datetime.now()
+    next_boss = None
+    next_time = None
+
+    for key, timer in spawn_timers.items():
+        spawn_time = datetime.strptime(timer["next_spawn"], "%Y-%m-%d %I:%M %p")
+        if spawn_time > now and (next_time is None or spawn_time < next_time):
+            next_time = spawn_time
+            next_boss = key
+
+    if next_boss:
+        await ctx.send(
+            f"🕒 Next boss to spawn: **{next_boss.title()}** at {next_time.strftime('%I:%M %p')}"
+        )
+    else:
+        await ctx.send("ℹ️ No upcoming boss spawn recorded.")
+
+bot.run(TOKEN)
+import discord
+from discord.ext import commands
+import json
+import os
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
 # Load environment variables
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
