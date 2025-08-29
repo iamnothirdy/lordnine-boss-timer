@@ -1,4 +1,32 @@
-import discord
+2025-08-29 18:22:31 ERROR    discord.ext.commands.bot Ignoring exception in command next
+Traceback (most recent call last):
+  File "/Users/ciriacogelera/Documents/lordnine_boss/discord-bot/lordnine/venv/lib/python3.13/site-packages/discord/ext/commands/core.py", line 235, in wrapped
+    ret = await coro(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/ciriacogelera/Documents/lordnine_boss/discord-bot/lordnine/lordnine-boss-timer/bot.py", line 146, in next
+    status, dt = get_next_spawn(name_norm)
+                 ~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/Users/ciriacogelera/Documents/lordnine_boss/discord-bot/lordnine/lordnine-boss-timer/bot.py", line 77, in get_next_spawn
+    next_spawn = datetime.strptime(timer["next_spawn"], "%Y-%m-%d %H:%M")
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/_strptime.py", line 789, in _strptime_datetime
+    tt, fraction, gmtoff_fraction = _strptime(data_string, format)
+                                    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/_strptime.py", line 558, in _strptime
+    raise ValueError("unconverted data remains: %s" %
+                      data_string[found.end():])
+ValueError: unconverted data remains:  PM
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/ciriacogelera/Documents/lordnine_boss/discord-bot/lordnine/venv/lib/python3.13/site-packages/discord/ext/commands/bot.py", line 1366, in invoke
+    await ctx.command.invoke(ctx)
+  File "/Users/ciriacogelera/Documents/lordnine_boss/discord-bot/lordnine/venv/lib/python3.13/site-packages/discord/ext/commands/core.py", line 1029, in invoke
+    await injected(*ctx.args, **ctx.kwargs)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/ciriacogelera/Documents/lordnine_boss/discord-bot/lordnine/venv/lib/python3.13/site-packages/discord/ext/commands/core.py", line 244, in wrapped
+    raise CommandInvokeError(exc) from exc
+discord.ext.commands.errors.CommandInvokeError: Command raised an exception: ValueError: unconverted data remains:  PMimport discord
 from discord.ext import commands
 import json
 import os
