@@ -85,7 +85,7 @@ async def info(interaction: discord.Interaction, boss_name: str):
 # --------------------------
 if __name__ == "__main__":
     import os
-    TOKEN = os.getenv("DISCORD_TOKEN")  # safer to use environment variable
+    TOKEN = "MTQxMDkwMzE0Mzk4MTc3Njk1OA.GUH9_v.E2qTLik02RuvVoNEgPRYA06mP04dXMH-uu9mho" # safer to use environment variable
     if not TOKEN:
         print("❌ No token found. Please set DISCORD_TOKEN in your environment.")
     else:
