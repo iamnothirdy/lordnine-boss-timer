@@ -1,0 +1,12 @@
+{
+  "zakum": {
+    "respawn": "24 hours",
+    "location": "El Nath",
+    "notes": "Classic boss"
+  },
+  "horntail": {
+    "respawn": "48 hours",
+    "location": "Cave of Life",
+    "notes": "Drops dragon items"
+  }
+}
