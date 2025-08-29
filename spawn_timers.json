@@ -8,7 +8,11 @@
         "next_spawn": "2025-08-30 04:05 AM"
     },
     "lady daliah": {
-        "last_killed": "2025-08-29 05:55 PM",
-        "next_spawn": "2025-08-30 11:55 AM"
+        "last_killed": "2025-08-29 06:08 PM",
+        "next_spawn": "2025-08-30 12:08 PM"
+    },
+    "ego": {
+        "last_killed": "2025-08-29 06:08 PM",
+        "next_spawn": "2025-08-30 03:08 PM"
     }
 }
