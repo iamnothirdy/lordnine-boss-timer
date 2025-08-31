@@ -1,57 +1,203 @@
 [
-  { "name": "Undomiel", "respawn": 86400, "nextSpawn": "12:05 AM" },
-  { "name": "Lady Daliah", "respawn": 64800, "nextSpawn": "10:03 PM" },
-  { "name": "Venatus", "respawn": 36000 },
-  { "name": "Viorent", "respawn": 36000 },
-  { "name": "Ego", "respawn": 75600, "nextSpawn": "10:49 AM" },
-  { "name": "Thymele", "special": true, "schedule": [
-      { "day": 1, "hour": 11, "minute": 30 },
-      { "day": 4, "hour": 19, "minute": 0 }
+  {
+    "name": "Undomiel",
+    "respawn": 86400,
+    "nextSpawn": "03:41 AM",
+    "originalKilled": "03:40 AM",
+    "originalKilledBy": "definitelynotthirdy",
+    "lastKilled": "03:41 AM",
+    "lastKilledBy": "definitelynotthirdy"
+  },
+  {
+    "name": "Lady Daliah",
+    "respawn": 64800,
+    "nextSpawn": "10:03 PM"
+  },
+  {
+    "name": "Venatus",
+    "respawn": 36000
+  },
+  {
+    "name": "Viorent",
+    "respawn": 36000,
+    "lastKilled": "03:00 PM",
+    "lastKilledBy": "definitelynotthirdy",
+    "nextSpawn": "01:00 AM",
+    "originalKilled": "03:00 PM",
+    "originalKilledBy": "definitelynotthirdy"
+  },
+  {
+    "name": "Ego",
+    "respawn": 75600,
+    "nextSpawn": "10:00 PM",
+    "lastKilled": "01:00 AM",
+    "lastKilledBy": "definitelynotthirdy"
+  },
+  {
+    "name": "Thymele",
+    "special": true,
+    "schedule": [
+      {
+        "day": 1,
+        "hour": 11,
+        "minute": 30
+      },
+      {
+        "day": 4,
+        "hour": 19,
+        "minute": 0
+      }
     ]
   },
-  { "name": "Araneo", "respawn": 86400, "nextSpawn": "11:06 PM" },
-  { "name": "Livera", "respawn": 86400, "nextSpawn": "11:16 PM" },
-  { "name": "Clemantis", "special": true, "schedule": [
-      { "day": 1, "hour": 11, "minute": 30 },
-      { "day": 4, "hour": 19, "minute": 0 }
+  {
+    "name": "Araneo",
+    "respawn": 86400,
+    "nextSpawn": "11:06 PM"
+  },
+  {
+    "name": "Livera",
+    "respawn": 86400,
+    "nextSpawn": "11:16 PM"
+  },
+  {
+    "name": "Clemantis",
+    "special": true,
+    "schedule": [
+      {
+        "day": 1,
+        "hour": 11,
+        "minute": 30
+      },
+      {
+        "day": 4,
+        "hour": 19,
+        "minute": 0
+      }
     ]
   },
-  { "name": "Saphirus", "special": true, "schedule": [
-      { "day": 0, "hour": 17, "minute": 0 },
-      { "day": 2, "hour": 11, "minute": 30 }
+  {
+    "name": "Saphirus",
+    "special": true,
+    "schedule": [
+      {
+        "day": 0,
+        "hour": 17,
+        "minute": 0
+      },
+      {
+        "day": 2,
+        "hour": 11,
+        "minute": 30
+      }
     ]
   },
-  { "name": "Neutro", "special": true, "schedule": [
-      { "day": 2, "hour": 19, "minute": 0 },
-      { "day": 4, "hour": 11, "minute": 30 }
+  {
+    "name": "Neutro",
+    "special": true,
+    "schedule": [
+      {
+        "day": 2,
+        "hour": 19,
+        "minute": 0
+      },
+      {
+        "day": 4,
+        "hour": 11,
+        "minute": 30
+      }
     ]
   },
-  { "name": "General Aquleus", "respawn": 104400 },
-  { "name": "Amentis", "respawn": 104400 },
-  { "name": "Baron Braudmore", "respawn": 115200 },
-  { "name": "Milavy", "special": true, "schedule": [
-      { "day": 6, "hour": 15, "minute": 0 }
+  {
+    "name": "General Aquleus",
+    "respawn": 104400
+  },
+  {
+    "name": "Amentis",
+    "respawn": 104400
+  },
+  {
+    "name": "Baron Braudmore",
+    "respawn": 115200
+  },
+  {
+    "name": "Milavy",
+    "special": true,
+    "schedule": [
+      {
+        "day": 6,
+        "hour": 15,
+        "minute": 0
+      }
     ]
   },
-  { "name": "Wannitas", "respawn": 172800 },
-  { "name": "Metus", "respawn": 172800 },
-  { "name": "Duplican", "respawn": 172800 },
-  { "name": "Shuliar", "respawn": 126000 },
-  { "name": "Ringor", "special": true, "schedule": [
-      { "day": 6, "hour": 17, "minute": 0 }
+  {
+    "name": "Wannitas",
+    "respawn": 172800
+  },
+  {
+    "name": "Metus",
+    "respawn": 172800
+  },
+  {
+    "name": "Duplican",
+    "respawn": 172800
+  },
+  {
+    "name": "Shuliar",
+    "respawn": 126000
+  },
+  {
+    "name": "Ringor",
+    "special": true,
+    "schedule": [
+      {
+        "day": 6,
+        "hour": 17,
+        "minute": 0
+      }
     ]
   },
-  { "name": "Roderick", "special": true, "schedule": [
-      { "day": 5, "hour": 19, "minute": 0 }
+  {
+    "name": "Roderick",
+    "special": true,
+    "schedule": [
+      {
+        "day": 5,
+        "hour": 19,
+        "minute": 0
+      }
     ]
   },
-  { "name": "Gareth", "respawn": 115200 },
-  { "name": "Titore", "respawn": 133200 },
-  { "name": "Larba", "respawn": 126000 },
-  { "name": "Catena", "respawn": 126000 },
-  { "name": "Auraq", "special": true, "schedule": [
-      { "day": 0, "hour": 21, "minute": 0 },
-      { "day": 3, "hour": 21, "minute": 0 }
+  {
+    "name": "Gareth",
+    "respawn": 115200
+  },
+  {
+    "name": "Titore",
+    "respawn": 133200
+  },
+  {
+    "name": "Larba",
+    "respawn": 126000
+  },
+  {
+    "name": "Catena",
+    "respawn": 126000
+  },
+  {
+    "name": "Auraq",
+    "special": true,
+    "schedule": [
+      {
+        "day": 0,
+        "hour": 21,
+        "minute": 0
+      },
+      {
+        "day": 3,
+        "hour": 21,
+        "minute": 0
+      }
     ]
   }
 ]
