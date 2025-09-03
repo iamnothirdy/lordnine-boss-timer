@@ -253,5 +253,37 @@ async def boss(ctx):
 
     await ctx.send(embed=embed)
 
+# /reset_timer command - resets all boss timers with confirmation
+@bot.command()
+async def reset_timer(ctx):
+    def check(m):
+        return m.author == ctx.author and m.channel == ctx.channel and m.content.lower() in ["yes", "no"]
+
+    await ctx.send("⚠️ WARNING: This will reset **ALL boss timers** to their original state (unknown data).\nType **yes** to proceed or **no** to cancel.")
+
+    try:
+        reply = await bot.wait_for("message", check=check, timeout=30.0)  # 30s to respond
+    except:
+        await ctx.send("❌ No response. Reset cancelled.")
+        return
+
+    if reply.content.lower() == "no":
+        await ctx.send("❌ Reset cancelled.")
+        return
+
+    # User confirmed "yes"
+    for boss in bosses.values():
+        boss.pop("lastKilled", None)
+        boss.pop("lastKilledBy", None)
+        boss.pop("nextSpawn", None)
+        boss.pop("originalKilled", None)
+        boss.pop("originalKilledBy", None)
+
+    with open("bosses.json", "w") as f:
+        json.dump(list(bosses.values()), f, indent=2)
+
+    await ctx.send("✅ All boss timers have been reset to their original state.")
+
+
 # Run bot
 bot.run(TOKEN)
