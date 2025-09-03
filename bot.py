@@ -37,14 +37,11 @@ async def kill(ctx, name: str):
 
     # If already killed before
     if "lastKilled" in boss:
-        # Parse the stored lastKilled time as today
         last_killed_time = datetime.datetime.strptime(boss["lastKilled"], "%I:%M %p")
         last_killed_time = last_killed_time.replace(year=now.year, month=now.month, day=now.day)
 
         if "respawn" in boss:
             next_spawn = last_killed_time + datetime.timedelta(seconds=boss["respawn"])
-
-            # If it's not yet respawned → block and show warning
             if now < next_spawn:
                 await ctx.send(
                     f"⚠️ The **{boss['name']}** has already been killed and recorded "
@@ -53,7 +50,6 @@ async def kill(ctx, name: str):
                     f"If you wish to update, use `/update {boss['name']} [HH:MM AM/PM]`"
                 )
                 return
-        # If boss uses fixed schedule, just block updates (no re-kill)
         elif "schedule" in boss:
             await ctx.send(
                 f"⚠️ The **{boss['name']}** has a fixed schedule and cannot be re-logged with `/kill`.\n"
@@ -62,7 +58,7 @@ async def kill(ctx, name: str):
             )
             return
 
-    # Record fresh kill (new or after respawn passed)
+    # Record fresh kill
     boss["originalKilled"] = boss.get("originalKilled", format_time(now))
     boss["originalKilledBy"] = boss.get("originalKilledBy", str(ctx.author))
     boss["lastKilled"] = format_time(now)
@@ -78,10 +74,8 @@ async def kill(ctx, name: str):
     else:
         await ctx.send(f"⚠️ {boss['name']} has a fixed schedule, not a respawn timer.")
 
-    # Save updates
     with open("bosses.json", "w") as f:
         json.dump(list(bosses.values()), f, indent=2)
-
 
 
 # /update command
@@ -98,7 +92,6 @@ async def update(ctx, name: str, *killed_time):
 
     boss = bosses[name]
     now = datetime.datetime.now()
-
     killed_time_str = " ".join(killed_time).upper()
 
     try:
@@ -135,6 +128,7 @@ async def update(ctx, name: str, *killed_time):
     with open("bosses.json", "w") as f:
         json.dump(list(bosses.values()), f, indent=2)
 
+
 # /info command
 @bot.command()
 async def info(ctx, name: str):
@@ -162,7 +156,8 @@ async def info(ctx, name: str):
 
     await ctx.send(msg)
 
-# /next command - shows next scheduled boss(es) including overlaps and handles never killed
+
+# /next command
 @bot.command()
 async def next(ctx):
     now = datetime.datetime.now()
@@ -172,17 +167,14 @@ async def next(ctx):
         next_time = None
         alive = False
 
-        # Respawn bosses
         if "respawn" in boss:
             if "lastKilled" in boss:
                 last_killed_time = datetime.datetime.strptime(boss["lastKilled"], "%I:%M %p")
             else:
-                # If never killed, consider next spawn is now
                 last_killed_time = now
             next_time = last_killed_time + datetime.timedelta(seconds=boss["respawn"])
             alive = last_killed_time <= now <= next_time
 
-        # Fixed schedule bosses
         elif "schedule" in boss:
             earliest_spawn = None
             for s in boss["schedule"]:
@@ -207,22 +199,22 @@ async def next(ctx):
         await ctx.send("No upcoming bosses found.")
         return
 
-    # Find earliest next spawn(s)
     next_spawns.sort(key=lambda x: x[0])
     earliest_time = next_spawns[0][0]
     overlapping_bosses = [(b, alive) for t, b, alive in next_spawns if t == earliest_time]
 
     msg = f"🕒 Next spawn(s) at {earliest_time.strftime('%I:%M %p')}:\n"
     for boss, alive in overlapping_bosses:
-        status = "🔥 **ALIVE NOW**" if alive else "Not alive yet"
-        last_by = boss.get('lastKilledBy', 'Never killed')
-        msg += f"- {boss['name']} ({status}, last killed by {last_by})\n"
+        if alive:
+            msg += f"- {boss['name']} is already alive!\n"
+        else:
+            last_by = boss.get('lastKilledBy', 'Never killed')
+            msg += f"- {boss['name']} (Not alive yet, last killed by {last_by})\n"
 
     await ctx.send(msg)
 
 
-
-# /boss command - shows all bosses
+# /boss command
 @bot.command()
 async def boss(ctx):
     embed = discord.Embed(title="📜 Bosses Info")

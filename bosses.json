@@ -199,5 +199,27 @@
         "minute": 0
       }
     ]
+  },
+   {
+    "name": "Supore",
+    "respawn": 223200
+  },
+  {
+    "name": "Asta",
+    "respawn": 223200
+  },
+  {
+    "name": "Ordo",
+    "respawn": 223200
+  },
+  {
+    "name": "Secreta",
+    "respawn": 223200
+  },
+  {
+    "name": "Chaiflock",
+    "schedule": [
+      { "day": 6, "hour": 22, "minute": 0 }
+    ]
   }
 ]
