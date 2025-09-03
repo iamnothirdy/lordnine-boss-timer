@@ -24,10 +24,9 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
-# /kill command
 @bot.command()
-async def kill(ctx, name: str):
-    name = name.lower()
+async def kill(ctx, *name):
+    name = " ".join(name).lower()
     if name not in bosses:
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
@@ -78,21 +77,22 @@ async def kill(ctx, name: str):
         json.dump(list(bosses.values()), f, indent=2)
 
 
-# /update command
+
 @bot.command()
-async def update(ctx, name: str, *killed_time):
-    name = name.lower()
+async def update(ctx, *args):
+    if len(args) < 3:
+        await ctx.send("❌ Usage: /update [Boss Name] [HH:MM AM/PM]")
+        return
+
+    name = " ".join(args[:-2]).lower()  # all but last two are boss name
+    killed_time_str = " ".join(args[-2:]).upper()  # last two are time
+
     if name not in bosses:
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
 
-    if not killed_time:
-        await ctx.send("❌ Please provide a time, e.g., `01:30 AM`.")
-        return
-
     boss = bosses[name]
     now = datetime.datetime.now()
-    killed_time_str = " ".join(killed_time).upper()
 
     try:
         new_kill_time = datetime.datetime.strptime(killed_time_str, "%I:%M %p")
