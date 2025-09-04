@@ -45,9 +45,6 @@ def format_respawn_time(seconds: int) -> str:
     return " ".join(parts) if parts else "0m"
 
 def get_next_spawn(boss, now):
-    """
-    Returns the next spawn datetime for a boss (respawn or scheduled)
-    """
     # Respawn-based
     if "respawn" in boss and "lastKilled" in boss:
         try:
@@ -59,12 +56,14 @@ def get_next_spawn(boss, now):
             return next_time
         except:
             return None
+
     # Fixed schedule
     elif "schedule" in boss:
         next_times = []
         for s in boss["schedule"]:
-            json_day = s["day"]  # Sunday=0
-            python_weekday = (json_day - 1) % 7  # Convert to Python weekday
+            json_day = s["day"]
+            # Convert JSON day (Sun=0) to Python weekday (Mon=0)
+            python_weekday = (json_day - 1) % 7
             days_ahead = (python_weekday - now.weekday() + 7) % 7
             spawn_date = now + timedelta(days=days_ahead)
             spawn_time = spawn_date.replace(hour=s["hour"], minute=s["minute"], second=0, microsecond=0)
@@ -72,7 +71,9 @@ def get_next_spawn(boss, now):
                 spawn_time += timedelta(days=7)
             next_times.append(spawn_time)
         return min(next_times) if next_times else None
+
     return None
+
 
 def update_next_spawn(boss):
     now = datetime.now()
