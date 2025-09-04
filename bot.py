@@ -13,6 +13,23 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
+def find_boss(name: str, bosses: dict):
+    """Find a boss by exact or partial (prefix) name match."""
+    name = name.lower()
+
+    # Exact match first
+    if name in bosses:
+        return bosses[name]
+
+    # Prefix match (e.g., "lady" -> "lady daliah")
+    matches = [boss for boss in bosses.values() if boss["name"].lower().startswith(name)]
+
+    if len(matches) == 1:
+        return matches[0]
+    elif len(matches) > 1:
+        return "multiple"  # ambiguous match
+    return None
+
 def format_time(dt):
     return dt.strftime("%I:%M %p")
 
@@ -25,11 +42,15 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
 @bot.command()
-async def kill(ctx, *name):
-    name = " ".join(name).lower()
-    if name not in bosses:
+async def kill(ctx, *, name: str):
+    boss = find_boss(name, bosses)
+    if boss == "multiple":
+        await ctx.send(f"⚠️ Multiple bosses start with '{name}'. Please be more specific.")
+        return
+    if not boss:
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
+
 
     boss = bosses[name]
     now = datetime.datetime.now()
@@ -77,19 +98,24 @@ async def kill(ctx, *name):
         json.dump(list(bosses.values()), f, indent=2)
 
 
-
 @bot.command()
-async def update(ctx, *args):
-    if len(args) < 3:
-        await ctx.send("❌ Usage: /update [Boss Name] [HH:MM AM/PM]")
+async def update(ctx, *, args: str):
+    parts = args.split()
+    if len(parts) < 2:
+        await ctx.send("❌ Usage: /update [boss name] [time]")
         return
 
-    name = " ".join(args[:-2]).lower()  # all but last two are boss name
-    killed_time_str = " ".join(args[-2:]).upper()  # last two are time
+    name = " ".join(parts[:-2])
+    killed_time = " ".join(parts[-2:])
 
-    if name not in bosses:
+    boss = find_boss(name, bosses)
+    if boss == "multiple":
+        await ctx.send(f"⚠️ Multiple bosses start with '{name}'. Please be more specific.")
+        return
+    if not boss:
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
+
 
     boss = bosses[name]
     now = datetime.datetime.now()
@@ -132,10 +158,14 @@ async def update(ctx, *args):
 # /info command
 @bot.command()
 async def info(ctx, *, name: str):
-    name = name.lower()
-    if name not in bosses:
+    boss = find_boss(name, bosses)
+    if boss == "multiple":
+        await ctx.send(f"⚠️ Multiple bosses start with '{name}'. Please be more specific.")
+        return
+    if not boss:
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
+
 
     boss = bosses[name]
     msg = f"📜 **{boss['name']} Info**\n"
