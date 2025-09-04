@@ -189,7 +189,17 @@ async def info(ctx, *, name: str):
         return
 
     respawn_time = format_respawn_time(int(boss['respawn']))
-    await ctx.send(f"📌 Info for **{boss['name']}**:\nRespawn: {respawn_time}")
+    next_spawn = boss.get("next_spawn", "Unknown")
+
+    embed = discord.Embed(
+        title=f"📜 {boss['name']} Info",
+        color=discord.Color.blue()
+    )
+    embed.add_field(name="⏳ Respawn", value=respawn_time, inline=False)
+    embed.add_field(name="🕒 Next spawn", value=next_spawn, inline=False)
+
+    await ctx.send(embed=embed)
+
 
 
 
