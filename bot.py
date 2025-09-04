@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 import json
-import datetime
+from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
 
@@ -95,63 +95,38 @@ async def kill(ctx, *, name: str):
 
 # ================= /update =================
 @bot.command()
-async def update(ctx, *, args: str):
-    try:
-        name, *killed_time = args.split()
-        name = name.strip()
-    except ValueError:
-        await ctx.send("❌ Please provide a boss name and time, e.g., `/update Lady Daliah 01:30 AM`.")
+async def next(ctx):
+    now = datetime.now()
+    upcoming = []
+
+    for boss in bosses.values():
+        if "nextSpawn" in boss and boss["nextSpawn"] != "Unknown":
+            try:
+                next_spawn_time = datetime.strptime(boss["nextSpawn"], "%I:%M %p")
+                next_spawn_time = next_spawn_time.replace(year=now.year, month=now.month, day=now.day)
+
+                if next_spawn_time > now:
+                    upcoming.append((next_spawn_time, boss["name"], boss.get("lastKilledBy", "Unknown")))
+            except Exception:
+                continue
+
+    if not upcoming:
+        await ctx.send("📭 No upcoming spawns found.")
         return
 
-    key, boss = find_boss(name, bosses)
+    upcoming.sort(key=lambda x: x[0])
+    next_time, next_boss, killer = upcoming[0]
 
-    if key == "multiple":
-        await ctx.send(f"⚠️ Multiple bosses start with '{name}'. Please be more specific.")
-        return
-    if not boss:
-        await ctx.send(f"❌ Boss '{name}' not found.")
-        return
+    embed = discord.Embed(
+        title="🕒 Next Boss Spawn",
+        description=f"**{next_boss}** is spawning soon!",
+        color=discord.Color.blue()
+    )
+    embed.add_field(name="⏰ Time", value=f"{next_time.strftime('%I:%M %p')}", inline=False)
+    embed.add_field(name="✏️ Last killed by", value=killer, inline=False)
 
-    if not killed_time:
-        await ctx.send("❌ Please provide a time, e.g., `01:30 AM`.")
-        return
+    await ctx.send(embed=embed)
 
-    killed_time_str = " ".join(killed_time).upper()
-    now = datetime.datetime.now()
-
-    try:
-        new_kill_time = datetime.datetime.strptime(killed_time_str, "%I:%M %p")
-    except ValueError:
-        await ctx.send("❌ Invalid time format. Use `1:30 AM` or `01:30 PM` format.")
-        return
-
-    new_kill_time = new_kill_time.replace(year=now.year, month=now.month, day=now.day)
-
-    original_time = boss.get("lastKilled", "Unknown")
-    original_by = boss.get("lastKilledBy", "Unknown")
-
-    boss["lastKilled"] = format_time(new_kill_time)
-    boss["lastKilledBy"] = str(ctx.author)
-
-    if "respawn" in boss:
-        next_spawn = new_kill_time + datetime.timedelta(seconds=boss["respawn"])
-        boss["nextSpawn"] = format_time(next_spawn)
-        await ctx.send(
-            f"✏️ **{boss['name']} Updated Kill Info**\n"
-            f"🟢 **Original:** {original_time} by {original_by}\n"
-            f"✏️ **Updated:** {format_time(new_kill_time)} by {ctx.author}\n"
-            f"🕒 Next spawn: **{format_time(next_spawn)}** on {next_spawn.strftime('%Y-%m-%d')}"
-        )
-    else:
-        await ctx.send(
-            f"✏️ **{boss['name']} Updated Kill Info**\n"
-            f"🟢 **Original:** {original_time} by {original_by}\n"
-            f"✏️ **Updated:** {format_time(new_kill_time)} by {ctx.author}\n"
-            f"⚠️ This boss has a fixed schedule, not a respawn timer."
-        )
-
-    with open("bosses.json", "w") as f:
-        json.dump(list(bosses.values()), f, indent=2)
 
 
 # ================= /info =================
