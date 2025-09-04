@@ -14,7 +14,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
 # Channel where announcements will be sent
-ANNOUNCEMENT_CHANNEL_ID = 123456789012345678  # 🔹 Replace with your channel ID
+ANNOUNCEMENT_CHANNEL_ID = 1410625107738755214  # 🔹 Replace with your channel ID
 
 def find_boss(name: str, bosses: dict):
     """Find a boss by exact or partial (prefix) name match."""
