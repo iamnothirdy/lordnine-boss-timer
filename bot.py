@@ -68,12 +68,6 @@ async def kill(ctx, *, name: str):
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
 
-    boss['last_killed'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    await ctx.send(f"✅ Marked **{boss['name']}** as killed at {boss['last_killed']}")
-
-
-
-    boss = bosses[name]
     now = datetime.datetime.now()
 
     # If already killed before
@@ -117,6 +111,7 @@ async def kill(ctx, *, name: str):
 
     with open("bosses.json", "w") as f:
         json.dump(list(bosses.values()), f, indent=2)
+
 
 
 @bot.command()
