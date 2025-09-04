@@ -44,35 +44,20 @@ def format_respawn_time(seconds: int) -> str:
         parts.append(f"{mins}m")
     return " ".join(parts) if parts else "0m"
 
-def get_next_spawn(boss, now):
-    # Respawn-based
-    if "respawn" in boss and "lastKilled" in boss:
-        try:
-            last_time = datetime.strptime(boss["lastKilled"], "%I:%M %p")
-            last_time = last_time.replace(year=now.year, month=now.month, day=now.day)
-            next_time = last_time + timedelta(seconds=boss["respawn"])
-            while next_time <= now:
-                next_time += timedelta(seconds=boss["respawn"])
-            return next_time
-        except:
-            return None
+def next_schedule_spawn(boss, now):
+    next_times = []
+    for s in boss.get("schedule", []):
+        json_day = s["day"]  # Sunday=0
+        python_weekday = (json_day - 1) % 7  # convert to Python weekday (Mon=0)
+        # calculate days ahead
+        days_ahead = (python_weekday - now.weekday() + 7) % 7
+        spawn_date = now + timedelta(days=days_ahead)
+        spawn_time = spawn_date.replace(hour=s["hour"], minute=s["minute"], second=0, microsecond=0)
+        if spawn_time <= now:
+            spawn_time += timedelta(days=7)
+        next_times.append(spawn_time)
+    return min(next_times) if next_times else None
 
-    # Fixed schedule
-    elif "schedule" in boss:
-        next_times = []
-        for s in boss["schedule"]:
-            json_day = s["day"]
-            # Convert JSON day (Sun=0) to Python weekday (Mon=0)
-            python_weekday = (json_day - 1) % 7
-            days_ahead = (python_weekday - now.weekday() + 7) % 7
-            spawn_date = now + timedelta(days=days_ahead)
-            spawn_time = spawn_date.replace(hour=s["hour"], minute=s["minute"], second=0, microsecond=0)
-            if spawn_time <= now:
-                spawn_time += timedelta(days=7)
-            next_times.append(spawn_time)
-        return min(next_times) if next_times else None
-
-    return None
 
 
 def update_next_spawn(boss):
@@ -191,30 +176,66 @@ async def info(ctx, *, name: str):
         embed.add_field(name="🕒 Next spawn", value=boss.get("nextSpawn", "Unknown"), inline=False)
     await ctx.send(embed=embed)
 
-# ----------------- /next Command -----------------
+# ================= /next =================
 @bot.command()
 async def next(ctx):
     now = datetime.now()
     upcoming = []
 
+    def next_schedule_spawn(boss, now):
+        """Calculate the next spawn datetime for a schedule-based boss."""
+        next_times = []
+        for s in boss.get("schedule", []):
+            json_day = s["day"]  # Sunday=0
+            # Convert to Python weekday (Monday=0)
+            python_weekday = (json_day - 1) % 7
+            # Calculate days ahead
+            days_ahead = (python_weekday - now.weekday() + 7) % 7
+            spawn_date = now + timedelta(days=days_ahead)
+            spawn_time = spawn_date.replace(hour=s["hour"], minute=s["minute"], second=0, microsecond=0)
+            if spawn_time <= now:
+                spawn_time += timedelta(days=7)
+            next_times.append(spawn_time)
+        return min(next_times) if next_times else None
+
     for boss in bosses.values():
-        next_spawn_time = get_next_spawn(boss, now)
+        next_spawn_time = None
+
+        # Respawn-based boss
+        if "respawn" in boss and "lastKilled" in boss:
+            try:
+                last_killed_time = datetime.strptime(boss["lastKilled"], "%I:%M %p")
+                last_killed_time = last_killed_time.replace(year=now.year, month=now.month, day=now.day)
+                next_spawn_time = last_killed_time + timedelta(seconds=boss["respawn"])
+                while next_spawn_time <= now:
+                    next_spawn_time += timedelta(seconds=boss["respawn"])
+            except:
+                continue
+
+        # Schedule-based boss
+        elif boss.get("special"):
+            next_spawn_time = next_schedule_spawn(boss, now)
+
         if next_spawn_time:
-            killer = boss.get("lastKilledBy", "Scheduled") if "respawn" in boss else "Scheduled"
-            upcoming.append((next_spawn_time, boss["name"], killer))
+            upcoming.append((next_spawn_time, boss["name"], boss.get("lastKilledBy", "Unknown")))
 
     if not upcoming:
         await ctx.send("📭 No upcoming spawns found.")
         return
 
+    # Sort by the earliest next spawn time
     upcoming.sort(key=lambda x: x[0])
     soonest_time = upcoming[0][0]
+
+    # List all bosses that spawn at the same earliest time
     spawn_list = [(t, name, killer) for t, name, killer in upcoming if t == soonest_time]
 
     embed = discord.Embed(title="🕒 Next Boss Spawn(s)", color=discord.Color.blue())
     for t, bname, killer in spawn_list:
         embed.add_field(name=bname, value=f"⏰ {t.strftime('%A %I:%M %p')} | Last killed by: {killer}", inline=False)
+
     await ctx.send(embed=embed)
+
 
 # ----------------- /boss Command -----------------
 @bot.command()
