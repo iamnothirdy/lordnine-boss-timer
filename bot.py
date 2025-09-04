@@ -202,59 +202,33 @@ async def info(ctx, *, name: str):
 # ================= /next =================
 @bot.command()
 async def next(ctx):
-    now = datetime.datetime.now()
-    next_spawns = []
+    now = datetime.now()
+    upcoming = []
 
     for name, boss in bosses.items():
-        next_time = None
-        alive = False
+        last_killed = boss.get("last_killed_time")
+        respawn = boss.get("respawn_time")
 
-        if "respawn" in boss:
-            if "lastKilled" in boss:
-                last_killed_time = datetime.datetime.strptime(boss["lastKilled"], "%I:%M %p")
-                last_killed_time = last_killed_time.replace(year=now.year, month=now.month, day=now.day)
-            else:
-                last_killed_time = now
-            next_time = last_killed_time + datetime.timedelta(seconds=boss["respawn"])
-            alive = last_killed_time <= now <= next_time
+        # Only calculate next spawn if boss was actually killed
+        if last_killed and respawn:
+            next_spawn = last_killed + timedelta(hours=respawn)
+            if next_spawn > now:
+                upcoming.append((name, next_spawn))
 
-        elif "schedule" in boss:
-            earliest_spawn = None
-            for s in boss["schedule"]:
-                spawn_time = datetime.datetime(
-                    year=now.year,
-                    month=now.month,
-                    day=now.day,
-                    hour=s["hour"],
-                    minute=s["minute"]
-                )
-                if spawn_time < now:
-                    spawn_time += datetime.timedelta(days=1)
-                if not earliest_spawn or spawn_time < earliest_spawn:
-                    earliest_spawn = spawn_time
-            next_time = earliest_spawn
-            alive = next_time <= now
+    # Sort by soonest spawn
+    upcoming.sort(key=lambda x: x[1])
 
-        if next_time:
-            next_spawns.append((next_time, boss, alive))
-
-    if not next_spawns:
-        await ctx.send("No upcoming bosses found.")
+    if not upcoming:
+        await ctx.send("✅ No upcoming spawns right now.")
         return
 
-    next_spawns.sort(key=lambda x: x[0])
-    earliest_time = next_spawns[0][0]
-    overlapping_bosses = [(b, alive) for t, b, alive in next_spawns if t == earliest_time]
+    # Build message
+    msg_lines = [f"🕒 Next spawn(s):"]
+    for name, spawn in upcoming[:5]:  # top 5
+        msg_lines.append(f"{name} → {spawn.strftime('%I:%M %p')}")
 
-    msg = f"🕒 Next spawn(s) at {earliest_time.strftime('%I:%M %p')}:\n"
-    for boss, alive in overlapping_bosses:
-        if alive:
-            msg += f"- {boss['name']} is already alive!\n"
-        else:
-            last_by = boss.get('lastKilledBy', 'Never killed')
-            msg += f"- {boss['name']} (Not alive yet, last killed by {last_by})\n"
+    await ctx.send("\n".join(msg_lines))
 
-    await ctx.send(msg)
 
 
 # ================= /boss =================
