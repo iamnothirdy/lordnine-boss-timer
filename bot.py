@@ -95,38 +95,63 @@ async def kill(ctx, *, name: str):
 
 # ================= /update =================
 @bot.command()
-async def next(ctx):
-    now = datetime.now()
-    upcoming = []
-
-    for boss in bosses.values():
-        if "nextSpawn" in boss and boss["nextSpawn"] != "Unknown":
-            try:
-                next_spawn_time = datetime.strptime(boss["nextSpawn"], "%I:%M %p")
-                next_spawn_time = next_spawn_time.replace(year=now.year, month=now.month, day=now.day)
-
-                if next_spawn_time > now:
-                    upcoming.append((next_spawn_time, boss["name"], boss.get("lastKilledBy", "Unknown")))
-            except Exception:
-                continue
-
-    if not upcoming:
-        await ctx.send("📭 No upcoming spawns found.")
+async def update(ctx, *, args: str):
+    try:
+        name, *killed_time = args.split()
+        name = name.strip()
+    except ValueError:
+        await ctx.send("❌ Please provide a boss name and time, e.g., `/update Lady Daliah 01:30 AM`.")
         return
 
-    upcoming.sort(key=lambda x: x[0])
-    next_time, next_boss, killer = upcoming[0]
+    key, boss = find_boss(name, bosses)
 
-    embed = discord.Embed(
-        title="🕒 Next Boss Spawn",
-        description=f"**{next_boss}** is spawning soon!",
-        color=discord.Color.blue()
-    )
-    embed.add_field(name="⏰ Time", value=f"{next_time.strftime('%I:%M %p')}", inline=False)
-    embed.add_field(name="✏️ Last killed by", value=killer, inline=False)
+    if key == "multiple":
+        await ctx.send(f"⚠️ Multiple bosses start with '{name}'. Please be more specific.")
+        return
+    if not boss:
+        await ctx.send(f"❌ Boss '{name}' not found.")
+        return
 
-    await ctx.send(embed=embed)
+    if not killed_time:
+        await ctx.send("❌ Please provide a time, e.g., `01:30 AM`.")
+        return
 
+    killed_time_str = " ".join(killed_time).upper()
+    now = datetime.datetime.now()
+
+    try:
+        new_kill_time = datetime.datetime.strptime(killed_time_str, "%I:%M %p")
+    except ValueError:
+        await ctx.send("❌ Invalid time format. Use `1:30 AM` or `01:30 PM` format.")
+        return
+
+    new_kill_time = new_kill_time.replace(year=now.year, month=now.month, day=now.day)
+
+    original_time = boss.get("lastKilled", "Unknown")
+    original_by = boss.get("lastKilledBy", "Unknown")
+
+    boss["lastKilled"] = format_time(new_kill_time)
+    boss["lastKilledBy"] = str(ctx.author)
+
+    if "respawn" in boss:
+        next_spawn = new_kill_time + datetime.timedelta(seconds=boss["respawn"])
+        boss["nextSpawn"] = format_time(next_spawn)
+        await ctx.send(
+            f"✏️ **{boss['name']} Updated Kill Info**\n"
+            f"🟢 **Original:** {original_time} by {original_by}\n"
+            f"✏️ **Updated:** {format_time(new_kill_time)} by {ctx.author}\n"
+            f"🕒 Next spawn: **{format_time(next_spawn)}** on {next_spawn.strftime('%Y-%m-%d')}"
+        )
+    else:
+        await ctx.send(
+            f"✏️ **{boss['name']} Updated Kill Info**\n"
+            f"🟢 **Original:** {original_time} by {original_by}\n"
+            f"✏️ **Updated:** {format_time(new_kill_time)} by {ctx.author}\n"
+            f"⚠️ This boss has a fixed schedule, not a respawn timer."
+        )
+
+    with open("bosses.json", "w") as f:
+        json.dump(list(bosses.values()), f, indent=2)
 
 
 # ================= /info =================
@@ -180,29 +205,34 @@ async def next(ctx):
     now = datetime.now()
     upcoming = []
 
-    for name, boss in bosses.items():
-        last_killed = boss.get("last_killed_time")
-        respawn = boss.get("respawn_time")
+    for boss in bosses.values():
+        if "nextSpawn" in boss and boss["nextSpawn"] != "Unknown":
+            try:
+                next_spawn_time = datetime.strptime(boss["nextSpawn"], "%I:%M %p")
+                next_spawn_time = next_spawn_time.replace(year=now.year, month=now.month, day=now.day)
 
-        # Only calculate next spawn if boss was actually killed
-        if last_killed and respawn:
-            next_spawn = last_killed + timedelta(hours=respawn)
-            if next_spawn > now:
-                upcoming.append((name, next_spawn))
-
-    # Sort by soonest spawn
-    upcoming.sort(key=lambda x: x[1])
+                if next_spawn_time > now:
+                    upcoming.append((next_spawn_time, boss["name"], boss.get("lastKilledBy", "Unknown")))
+            except Exception:
+                continue
 
     if not upcoming:
-        await ctx.send("✅ No upcoming spawns right now.")
+        await ctx.send("📭 No upcoming spawns found.")
         return
 
-    # Build message
-    msg_lines = [f"🕒 Next spawn(s):"]
-    for name, spawn in upcoming[:5]:  # top 5
-        msg_lines.append(f"{name} → {spawn.strftime('%I:%M %p')}")
+    upcoming.sort(key=lambda x: x[0])
+    next_time, next_boss, killer = upcoming[0]
 
-    await ctx.send("\n".join(msg_lines))
+    embed = discord.Embed(
+        title="🕒 Next Boss Spawn",
+        description=f"**{next_boss}** is spawning soon!",
+        color=discord.Color.blue()
+    )
+    embed.add_field(name="⏰ Time", value=f"{next_time.strftime('%I:%M %p')}", inline=False)
+    embed.add_field(name="✏️ Last killed by", value=killer, inline=False)
+
+    await ctx.send(embed=embed)
+
 
 
 
