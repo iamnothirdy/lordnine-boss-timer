@@ -71,7 +71,7 @@ async def kill(ctx, *, name: str):
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
 
-    now = datetime.datetime.now()
+    now = datetime.now()
 
     # Record fresh kill
     boss["originalKilled"] = boss.get("originalKilled", format_time(now))
@@ -80,7 +80,7 @@ async def kill(ctx, *, name: str):
     boss["lastKilledBy"] = str(ctx.author)
 
     if "respawn" in boss:
-        next_spawn = now + datetime.timedelta(seconds=boss["respawn"])
+        next_spawn = now + timedelta(seconds=boss["respawn"])
         boss["nextSpawn"] = format_time(next_spawn)
         await ctx.send(
             f"☠️ {boss['name']} killed at {format_time(now)} by {ctx.author}\n"
@@ -117,10 +117,10 @@ async def update(ctx, *, args: str):
         return
 
     killed_time_str = " ".join(killed_time).upper()
-    now = datetime.datetime.now()
+    now = datetime.now()
 
     try:
-        new_kill_time = datetime.datetime.strptime(killed_time_str, "%I:%M %p")
+        new_kill_time = datetime.strptime(killed_time_str, "%I:%M %p")
     except ValueError:
         await ctx.send("❌ Invalid time format. Use `1:30 AM` or `01:30 PM` format.")
         return
@@ -134,7 +134,7 @@ async def update(ctx, *, args: str):
     boss["lastKilledBy"] = str(ctx.author)
 
     if "respawn" in boss:
-        next_spawn = new_kill_time + datetime.timedelta(seconds=boss["respawn"])
+        next_spawn = new_kill_time + timedelta(seconds=boss["respawn"])
         boss["nextSpawn"] = format_time(next_spawn)
         await ctx.send(
             f"✏️ **{boss['name']} Updated Kill Info**\n"
@@ -186,7 +186,7 @@ async def info(ctx, *, name: str):
         )
 
     if "respawn" in boss:
-        respawn_time = format_respawn_time(boss['respawn'])  # ✅ fixed seconds → d/h/m
+        respawn_time = format_respawn_time(boss['respawn'])
         embed.add_field(name="⏳ Respawn", value=respawn_time, inline=False)
         embed.add_field(name="🕒 Next spawn", value=boss.get("nextSpawn", "Unknown"), inline=False)
     elif "schedule" in boss:
@@ -234,14 +234,12 @@ async def next(ctx):
     await ctx.send(embed=embed)
 
 
-
-
 # ================= /boss =================
 @bot.command()
 async def boss(ctx):
     embed = discord.Embed(title="📜 Bosses Info")
     count = 0
-    now = datetime.datetime.now()
+    now = datetime.now()
 
     for name, boss in bosses.items():
         if count >= 25:
@@ -249,9 +247,9 @@ async def boss(ctx):
 
         alive = False
         if "lastKilled" in boss and "respawn" in boss:
-            last_killed_time = datetime.datetime.strptime(boss["lastKilled"], "%I:%M %p")
+            last_killed_time = datetime.strptime(boss["lastKilled"], "%I:%M %p")
             last_killed_time = last_killed_time.replace(year=now.year, month=now.month, day=now.day)
-            next_spawn_time = last_killed_time + datetime.timedelta(seconds=boss["respawn"])
+            next_spawn_time = last_killed_time + timedelta(seconds=boss["respawn"])
             if last_killed_time <= now <= next_spawn_time:
                 alive = True
 
