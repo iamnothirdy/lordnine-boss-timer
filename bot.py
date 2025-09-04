@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import json
 from datetime import datetime, timedelta
 import os
@@ -12,6 +12,9 @@ with open("bosses.json", "r") as f:
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
+
+# Channel where announcements will be sent
+ANNOUNCEMENT_CHANNEL_ID = 123456789012345678  # 🔹 Replace with your channel ID
 
 def find_boss(name: str, bosses: dict):
     """Find a boss by exact or partial (prefix) name match."""
@@ -29,7 +32,6 @@ def find_boss(name: str, bosses: dict):
     elif len(matches) > 1:
         return "multiple", None
     return None, None
-
 
 def format_time(dt):
     return dt.strftime("%I:%M %p")
@@ -50,7 +52,6 @@ def format_respawn_time(seconds: int) -> str:
 
     return " ".join(parts) if parts else "0m"
 
-
 # Load token from environment
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -58,6 +59,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
+    check_spawns.start()  # 🔹 Start background task
 
 # ================= /kill =================
 @bot.command()
@@ -91,7 +93,6 @@ async def kill(ctx, *, name: str):
 
     with open("bosses.json", "w") as f:
         json.dump(list(bosses.values()), f, indent=2)
-
 
 # ================= /update =================
 @bot.command()
@@ -153,7 +154,6 @@ async def update(ctx, *, args: str):
     with open("bosses.json", "w") as f:
         json.dump(list(bosses.values()), f, indent=2)
 
-
 # ================= /info =================
 @bot.command()
 async def info(ctx, *, name: str):
@@ -198,7 +198,6 @@ async def info(ctx, *, name: str):
 
     await ctx.send(embed=embed)
 
-
 # ================= /next =================
 @bot.command()
 async def next(ctx):
@@ -206,6 +205,7 @@ async def next(ctx):
     upcoming = []
 
     for boss in bosses.values():
+        # Respawn-based bosses
         if "nextSpawn" in boss and boss["nextSpawn"] != "Unknown":
             try:
                 next_spawn_time = datetime.strptime(boss["nextSpawn"], "%I:%M %p")
@@ -216,23 +216,31 @@ async def next(ctx):
             except Exception:
                 continue
 
+        # Fixed schedule bosses
+        elif "schedule" in boss:
+            for s in boss["schedule"]:
+                schedule_time = now.replace(hour=s["hour"], minute=s["minute"], second=0, microsecond=0)
+                if schedule_time > now:
+                    upcoming.append((schedule_time, boss["name"], "Fixed schedule"))
+                    break
+
     if not upcoming:
         await ctx.send("📭 No upcoming spawns found.")
         return
 
     upcoming.sort(key=lambda x: x[0])
-    next_time, next_boss, killer = upcoming[0]
+    soonest_time = upcoming[0][0]
 
     embed = discord.Embed(
-        title="🕒 Next Boss Spawn",
-        description=f"**{next_boss}** is spawning soon!",
+        title="🕒 Next Boss Spawn(s)",
         color=discord.Color.blue()
     )
-    embed.add_field(name="⏰ Time", value=f"{next_time.strftime('%I:%M %p')}", inline=False)
-    embed.add_field(name="✏️ Last killed by", value=killer, inline=False)
+
+    for t, bname, killer in upcoming:
+        if t == soonest_time:
+            embed.add_field(name=bname, value=f"⏰ {t.strftime('%I:%M %p')} | Last killed by: {killer}", inline=False)
 
     await ctx.send(embed=embed)
-
 
 # ================= /boss =================
 @bot.command()
@@ -274,7 +282,6 @@ async def boss(ctx):
 
     await ctx.send(embed=embed)
 
-
 # ================= /reset_timer =================
 @bot.command()
 async def reset_timer(ctx):
@@ -284,7 +291,7 @@ async def reset_timer(ctx):
     await ctx.send("⚠️ WARNING: This will reset **ALL boss timers** to their original state (unknown data).\nType **yes** to proceed or **no** to cancel.")
 
     try:
-        reply = await bot.wait_for("message", check=check, timeout=30.0)  # 30s to respond
+        reply = await bot.wait_for("message", check=check, timeout=30.0)
     except:
         await ctx.send("❌ No response. Reset cancelled.")
         return
@@ -305,6 +312,53 @@ async def reset_timer(ctx):
 
     await ctx.send("✅ All boss timers have been reset to their original state.")
 
+# ================= Background Task: Auto Announcements =================
+@tasks.loop(minutes=1)
+async def check_spawns():
+    now = datetime.now()
+    channel = bot.get_channel(ANNOUNCEMENT_CHANNEL_ID)
+    if not channel:
+        return
+
+    warnings = []
+    spawns = []
+
+    for boss in bosses.values():
+        # Respawn-based
+        if "nextSpawn" in boss and boss["nextSpawn"] != "Unknown":
+            try:
+                next_spawn_time = datetime.strptime(boss["nextSpawn"], "%I:%M %p")
+                next_spawn_time = next_spawn_time.replace(year=now.year, month=now.month, day=now.day)
+                diff = (next_spawn_time - now).total_seconds()
+
+                if 0 <= diff <= 60:
+                    spawns.append(boss["name"])
+                elif 600 <= diff <= 660:
+                    warnings.append(boss["name"])
+            except Exception:
+                continue
+
+        # Fixed schedule
+        elif "schedule" in boss:
+            for s in boss["schedule"]:
+                schedule_time = now.replace(hour=s["hour"], minute=s["minute"], second=0, microsecond=0)
+                diff = (schedule_time - now).total_seconds()
+                if 0 <= diff <= 60:
+                    spawns.append(boss["name"])
+                elif 600 <= diff <= 660:
+                    warnings.append(boss["name"])
+
+    if warnings:
+        embed = discord.Embed(title="⚠️ Upcoming Boss Spawn", color=discord.Color.orange())
+        for b in warnings:
+            embed.add_field(name=b, value="⏳ Spawning in 10 minutes!", inline=False)
+        await channel.send(embed=embed)
+
+    if spawns:
+        embed = discord.Embed(title="🔥 Boss Spawned!", color=discord.Color.red())
+        for b in spawns:
+            embed.add_field(name=b, value="✅ Alive now!", inline=False)
+        await channel.send(embed=embed)
 
 # Run bot
 bot.run(TOKEN)
