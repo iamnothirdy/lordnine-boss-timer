@@ -34,6 +34,21 @@ def find_boss(name: str, bosses: dict):
 def format_time(dt):
     return dt.strftime("%I:%M %p")
 
+def format_respawn_time(minutes: int) -> str:
+    days, rem = divmod(minutes, 1440)   # 1440 minutes = 1 day
+    hours, mins = divmod(rem, 60)
+
+    parts = []
+    if days > 0:
+        parts.append(f"{days}d")
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if mins > 0:
+        parts.append(f"{mins}m")
+
+    return " ".join(parts) if parts else "0m"
+
+
 # Load token from environment
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -173,7 +188,9 @@ async def info(ctx, *, name: str):
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
 
-    await ctx.send(f"📌 Info for **{boss['name']}**:\nRespawn: {boss['respawn']} minutes")
+    respawn_time = format_respawn_time(int(boss['respawn']))
+    await ctx.send(f"📌 Info for **{boss['name']}**:\nRespawn: {respawn_time}")
+
 
 
 
