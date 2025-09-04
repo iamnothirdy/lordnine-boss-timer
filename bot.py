@@ -44,31 +44,34 @@ def format_respawn_time(seconds: int) -> str:
         parts.append(f"{mins}m")
     return " ".join(parts) if parts else "0m"
 
-def get_next_spawn(boss: dict, now: datetime):
-    """Return next spawn datetime for a boss."""
-    # Respawn-based
+def get_next_spawn(boss, now):
+    """
+    Returns the next spawn datetime for a boss (respawn or scheduled).
+    """
     if "respawn" in boss and "lastKilled" in boss:
         try:
             last_time = datetime.strptime(boss["lastKilled"], "%I:%M %p")
             last_time = last_time.replace(year=now.year, month=now.month, day=now.day)
-            next_spawn = last_time + timedelta(seconds=boss["respawn"])
-            while next_spawn <= now:
-                next_spawn += timedelta(seconds=boss["respawn"])
-            return next_spawn
+            next_time = last_time + timedelta(seconds=boss["respawn"])
+            while next_time <= now:
+                next_time += timedelta(seconds=boss["respawn"])
+            return next_time
         except:
             return None
-    # Schedule-based
     elif "schedule" in boss:
+        # Calculate the next scheduled spawn
         next_times = []
         for s in boss["schedule"]:
-            schedule_time = now.replace(hour=s["hour"], minute=s["minute"], second=0, microsecond=0)
-            weekday_diff = (s["day"] - now.weekday()) % 7
-            schedule_time += timedelta(days=weekday_diff)
-            if schedule_time <= now:
-                schedule_time += timedelta(days=7)
-            next_times.append(schedule_time)
+            # Day 0 = Sunday ... Day 6 = Saturday
+            days_ahead = (s["day"] - now.weekday() - 1) % 7 + 1
+            spawn_date = now + timedelta(days=days_ahead)
+            spawn_time = spawn_date.replace(hour=s["hour"], minute=s["minute"], second=0, microsecond=0)
+            if spawn_time <= now:
+                spawn_time += timedelta(days=7)
+            next_times.append(spawn_time)
         return min(next_times) if next_times else None
     return None
+
 
 def save_bosses():
     """Save current boss data back to JSON."""
@@ -199,7 +202,6 @@ async def next(ctx):
     for boss in bosses.values():
         next_spawn_time = get_next_spawn(boss, now)
         if next_spawn_time:
-            # For respawn bosses, use lastKilledBy; for schedule, mark as 'Scheduled'
             killer = boss.get("lastKilledBy", "Scheduled") if "respawn" in boss else "Scheduled"
             upcoming.append((next_spawn_time, boss["name"], killer))
 
@@ -209,12 +211,11 @@ async def next(ctx):
 
     # Sort by next spawn time
     upcoming.sort(key=lambda x: x[0])
-    soonest_time = upcoming[0][0]
 
-    # Collect all bosses with the exact same next spawn time
+    # Show all upcoming bosses with same next spawn time
+    soonest_time = upcoming[0][0]
     spawn_list = [(t, name, killer) for t, name, killer in upcoming if t == soonest_time]
 
-    # Use multiple embeds if needed
     embeds = []
     batch_size = 25
     for i in range(0, len(spawn_list), batch_size):
@@ -226,6 +227,7 @@ async def next(ctx):
 
     for embed in embeds:
         await ctx.send(embed=embed)
+
 
 
 # ================= /boss =================
