@@ -131,7 +131,7 @@ async def update(ctx, *args):
 
 # /info command
 @bot.command()
-async def info(ctx, name: str):
+async def info(ctx, *, name: str):
     name = name.lower()
     if name not in bosses:
         await ctx.send(f"❌ Boss '{name}' not found.")
