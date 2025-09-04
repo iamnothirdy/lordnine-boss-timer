@@ -2,224 +2,209 @@
   {
     "name": "Undomiel",
     "respawn": 86400,
-    "nextSpawn": "03:41 AM",
-    "originalKilled": "03:40 AM",
-    "originalKilledBy": "definitelynotthirdy",
-    "lastKilled": "03:41 AM",
-    "lastKilledBy": "definitelynotthirdy"
+    "lastKilled": "01:50 PM",
+    "lastKilledBy": "fearsome56",
+    "nextSpawn": "01:50 PM"
   },
   {
     "name": "Lady Daliah",
     "respawn": 64800,
-    "nextSpawn": "10:03 PM"
+    "lastKilled": "08:17 AM",
+    "lastKilledBy": "definitelynotthirdy",
+    "nextSpawn": "02:17 AM"
   },
   {
     "name": "Venatus",
-    "respawn": 36000
+    "respawn": 36000,
+    "lastKilled": "09:18 AM",
+    "lastKilledBy": "definitelynotthirdy",
+    "nextSpawn": "07:18 PM"
   },
   {
     "name": "Viorent",
     "respawn": 36000,
-    "lastKilled": "03:00 PM",
-    "lastKilledBy": "definitelynotthirdy",
-    "nextSpawn": "01:00 AM",
-    "originalKilled": "03:00 PM",
-    "originalKilledBy": "definitelynotthirdy"
+    "lastKilled": "09:27 AM",
+    "lastKilledBy": "algorithmjazz",
+    "nextSpawn": "07:27 PM"
   },
   {
     "name": "Ego",
     "respawn": 75600,
-    "nextSpawn": "10:00 PM",
-    "lastKilled": "01:00 AM",
-    "lastKilledBy": "definitelynotthirdy"
+    "lastKilled": "10:43 AM",
+    "lastKilledBy": "algorithmjazz",
+    "nextSpawn": "07:43 AM"
   },
   {
     "name": "Thymele",
     "special": true,
     "schedule": [
-      {
-        "day": 1,
-        "hour": 11,
-        "minute": 30
-      },
-      {
-        "day": 4,
-        "hour": 19,
-        "minute": 0
-      }
-    ]
+      { "day": 1, "hour": 19, "minute": 0 },
+      { "day": 3, "hour": 11, "minute": 30 }
+    ],
+    "nextSpawn": "Monday 07:00 PM"
   },
   {
     "name": "Araneo",
     "respawn": 86400,
-    "nextSpawn": "11:06 PM"
+    "lastKilled": "01:33 PM",
+    "lastKilledBy": "fearsome56",
+    "nextSpawn": "01:33 PM"
   },
   {
     "name": "Livera",
     "respawn": 86400,
-    "nextSpawn": "11:16 PM"
+    "lastKilled": "01:22 PM",
+    "lastKilledBy": "fearsome56",
+    "nextSpawn": "01:22 PM"
   },
   {
     "name": "Clemantis",
     "special": true,
     "schedule": [
-      {
-        "day": 1,
-        "hour": 11,
-        "minute": 30
-      },
-      {
-        "day": 4,
-        "hour": 19,
-        "minute": 0
-      }
-    ]
+      { "day": 1, "hour": 11, "minute": 30 },
+      { "day": 4, "hour": 19, "minute": 0 }
+    ],
+    "nextSpawn": "Monday 11:30 AM"
   },
   {
     "name": "Saphirus",
     "special": true,
     "schedule": [
-      {
-        "day": 0,
-        "hour": 17,
-        "minute": 0
-      },
-      {
-        "day": 2,
-        "hour": 11,
-        "minute": 30
-      }
-    ]
+      { "day": 0, "hour": 17, "minute": 0 },
+      { "day": 2, "hour": 11, "minute": 30 }
+    ],
+    "nextSpawn": "Sunday 05:00 PM"
   },
   {
     "name": "Neutro",
     "special": true,
     "schedule": [
-      {
-        "day": 2,
-        "hour": 19,
-        "minute": 0
-      },
-      {
-        "day": 4,
-        "hour": 11,
-        "minute": 30
-      }
-    ]
+      { "day": 2, "hour": 19, "minute": 0 },
+      { "day": 4, "hour": 11, "minute": 30 }
+    ],
+    "nextSpawn": "Tuesday 07:00 PM"
   },
   {
     "name": "General Aquleus",
-    "respawn": 104400
+    "respawn": 104400,
+    "nextSpawn": "Unknown"
   },
   {
     "name": "Amentis",
-    "respawn": 104400
+    "respawn": 104400,
+    "lastKilled": "09:42 PM",
+    "lastKilledBy": "shinji_016",
+    "nextSpawn": "02:42 AM"
   },
   {
     "name": "Baron Braudmore",
-    "respawn": 115200
+    "respawn": 115200,
+    "lastKilled": "09:13 PM",
+    "lastKilledBy": "fearsome56",
+    "nextSpawn": "05:13 AM"
   },
   {
     "name": "Milavy",
     "special": true,
-    "schedule": [
-      {
-        "day": 6,
-        "hour": 15,
-        "minute": 0
-      }
-    ]
+    "schedule": [{ "day": 6, "hour": 15, "minute": 0 }],
+    "nextSpawn": "Saturday 03:00 PM"
   },
   {
     "name": "Wannitas",
-    "respawn": 172800
+    "respawn": 172800,
+    "lastKilled": "05:25 PM",
+    "lastKilledBy": "shinji_016",
+    "nextSpawn": "05:25 PM"
   },
   {
     "name": "Metus",
-    "respawn": 172800
+    "respawn": 172800,
+    "lastKilled": "04:59 PM",
+    "lastKilledBy": "shinji_016",
+    "nextSpawn": "04:59 PM"
   },
   {
     "name": "Duplican",
-    "respawn": 172800
+    "respawn": 172800,
+    "lastKilled": "05:56 PM",
+    "lastKilledBy": "shinji_016",
+    "nextSpawn": "05:56 PM"
   },
   {
     "name": "Shuliar",
-    "respawn": 126000
+    "respawn": 126000,
+    "lastKilled": "03:40 PM",
+    "lastKilledBy": "shinji_016",
+    "nextSpawn": "02:40 AM"
   },
   {
     "name": "Ringor",
     "special": true,
-    "schedule": [
-      {
-        "day": 6,
-        "hour": 17,
-        "minute": 0
-      }
-    ]
+    "schedule": [{ "day": 6, "hour": 17, "minute": 0 }],
+    "nextSpawn": "Saturday 05:00 PM"
   },
   {
     "name": "Roderick",
     "special": true,
-    "schedule": [
-      {
-        "day": 5,
-        "hour": 19,
-        "minute": 0
-      }
-    ]
+    "schedule": [{ "day": 5, "hour": 19, "minute": 0 }],
+    "nextSpawn": "Friday 07:00 PM"
   },
   {
     "name": "Gareth",
-    "respawn": 115200
+    "respawn": 115200,
+    "lastKilled": "10:30 PM",
+    "lastKilledBy": "shinji_016",
+    "nextSpawn": "06:30 AM"
   },
   {
     "name": "Titore",
-    "respawn": 133200
+    "respawn": 133200,
+    "nextSpawn": "Unknown"
   },
   {
     "name": "Larba",
-    "respawn": 126000
+    "respawn": 126000,
+    "lastKilled": "03:00 PM",
+    "lastKilledBy": "shinji_016",
+    "nextSpawn": "02:00 AM"
   },
   {
     "name": "Catena",
-    "respawn": 126000
+    "respawn": 126000,
+    "nextSpawn": "Unknown"
   },
   {
     "name": "Auraq",
     "special": true,
     "schedule": [
-      {
-        "day": 0,
-        "hour": 21,
-        "minute": 0
-      },
-      {
-        "day": 3,
-        "hour": 21,
-        "minute": 0
-      }
-    ]
+      { "day": 0, "hour": 21, "minute": 0 },
+      { "day": 3, "hour": 21, "minute": 0 }
+    ],
+    "nextSpawn": "Sunday 09:00 PM"
   },
-   {
+  {
     "name": "Supore",
-    "respawn": 223200
+    "respawn": 223200,
+    "nextSpawn": "Unknown"
   },
   {
     "name": "Asta",
-    "respawn": 223200
+    "respawn": 223200,
+    "nextSpawn": "Unknown"
   },
   {
     "name": "Ordo",
-    "respawn": 223200
+    "respawn": 223200,
+    "nextSpawn": "Unknown"
   },
   {
     "name": "Secreta",
-    "respawn": 223200
+    "respawn": 223200,
+    "nextSpawn": "Unknown"
   },
   {
     "name": "Chaiflock",
-    "schedule": [
-      { "day": 6, "hour": 22, "minute": 0 }
-    ]
+    "schedule": [{ "day": 6, "hour": 22, "minute": 0 }],
+    "nextSpawn": "Saturday 10:00 PM"
   }
 ]
