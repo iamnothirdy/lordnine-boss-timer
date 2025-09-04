@@ -199,21 +199,34 @@ async def next(ctx):
     for boss in bosses.values():
         next_spawn_time = get_next_spawn(boss, now)
         if next_spawn_time:
-            upcoming.append((next_spawn_time, boss["name"], boss.get("lastKilledBy", "Unknown")))
+            # For respawn bosses, use lastKilledBy; for schedule, mark as 'Scheduled'
+            killer = boss.get("lastKilledBy", "Scheduled") if "respawn" in boss else "Scheduled"
+            upcoming.append((next_spawn_time, boss["name"], killer))
 
     if not upcoming:
         await ctx.send("📭 No upcoming spawns found.")
         return
 
+    # Sort by next spawn time
     upcoming.sort(key=lambda x: x[0])
     soonest_time = upcoming[0][0]
+
+    # Collect all bosses with the exact same next spawn time
     spawn_list = [(t, name, killer) for t, name, killer in upcoming if t == soonest_time]
 
-    embed = discord.Embed(title="🕒 Next Boss Spawn(s)", color=discord.Color.blue())
-    for t, bname, killer in spawn_list:
-        embed.add_field(name=bname, value=f"⏰ {t.strftime('%A %I:%M %p')} | Last killed by: {killer}", inline=False)
+    # Use multiple embeds if needed
+    embeds = []
+    batch_size = 25
+    for i in range(0, len(spawn_list), batch_size):
+        embed = discord.Embed(title="🕒 Next Boss Spawn(s)", color=discord.Color.blue())
+        batch = spawn_list[i:i+batch_size]
+        for t, bname, killer in batch:
+            embed.add_field(name=bname, value=f"⏰ {t.strftime('%A %I:%M %p')} | Last killed by: {killer}", inline=False)
+        embeds.append(embed)
 
-    await ctx.send(embed=embed)
+    for embed in embeds:
+        await ctx.send(embed=embed)
+
 
 # ================= /boss =================
 @bot.command()
