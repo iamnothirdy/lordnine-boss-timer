@@ -13,7 +13,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
-# Announcement channel
+# Channel for announcements
 ANNOUNCEMENT_CHANNEL_ID = 1410625107738755214  # Replace with your channel ID
 
 # ----------------- Helper Functions -----------------
@@ -45,12 +45,13 @@ def format_respawn_time(seconds: int) -> str:
     return " ".join(parts) if parts else "0m"
 
 def json_to_python_weekday(json_day):
-    """JSON: Sunday=0, Monday=1, ..., Saturday=6; Python: Monday=0, ..., Sunday=6"""
-    return 6 if json_day == 0 else json_day - 1
+    """Converts JSON day to Python weekday (Mon=0, Sun=6)"""
+    return (json_day - 1) % 7 if json_day != 0 else 6
 
 def get_next_spawn(boss, now=None):
-    """Return the next spawn datetime for a boss (respawn or schedule)"""
-    now = now or datetime.now()
+    """Calculates next spawn datetime for a boss"""
+    if now is None:
+        now = datetime.now()
 
     # Respawn-based boss
     if "respawn" in boss and "lastKilled" in boss:
@@ -76,12 +77,14 @@ def get_next_spawn(boss, now=None):
                 spawn_time += timedelta(days=7)
             next_times.append(spawn_time)
         return min(next_times) if next_times else None
+
     return None
 
 def update_next_spawn(boss):
+    """Update boss dict with calculated nextSpawn string"""
     next_spawn_time = get_next_spawn(boss)
     if next_spawn_time:
-        boss["nextSpawn"] = next_spawn_time.strftime("%A %I:%M %p")
+        boss["nextSpawn"] = format_time(next_spawn_time)
     else:
         boss["nextSpawn"] = "Unknown"
 
@@ -99,7 +102,7 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}")
     check_spawns.start()
 
-# ----------------- /kill -----------------
+# ----------------- /kill Command -----------------
 @bot.command()
 async def kill(ctx, *, name: str):
     key, boss = find_boss(name, bosses)
@@ -118,9 +121,12 @@ async def kill(ctx, *, name: str):
     update_next_spawn(boss)
     save_bosses()
 
-    await ctx.send(f"☠️ {boss['name']} killed at {format_time(now)} by {ctx.author}\n🕒 Next spawn: **{boss['nextSpawn']}**")
+    await ctx.send(
+        f"☠️ {boss['name']} killed at {format_time(now)} by {ctx.author}\n"
+        f"🕒 Next spawn: **{boss['nextSpawn']}**"
+    )
 
-# ----------------- /update -----------------
+# ----------------- /update Command -----------------
 @bot.command()
 async def update(ctx, *, args: str):
     try:
@@ -163,7 +169,7 @@ async def update(ctx, *, args: str):
         f"🕒 Next spawn: **{boss['nextSpawn']}**"
     )
 
-# ----------------- /info -----------------
+# ----------------- /info Command -----------------
 @bot.command()
 async def info(ctx, *, name: str):
     key, boss = find_boss(name, bosses)
@@ -175,6 +181,7 @@ async def info(ctx, *, name: str):
         return
 
     update_next_spawn(boss)
+
     embed = discord.Embed(title=f"📜 {boss['name']} Info", color=discord.Color.blue())
     if "originalKilled" in boss:
         embed.add_field(name="🟢 Original killed", value=f"{boss['originalKilled']} by {boss.get('originalKilledBy','Unknown')}", inline=False)
@@ -182,13 +189,14 @@ async def info(ctx, *, name: str):
         embed.add_field(name="✏️ Last killed", value=f"{boss['lastKilled']} by {boss.get('lastKilledBy','Unknown')}", inline=False)
     if "respawn" in boss:
         embed.add_field(name="⏳ Respawn", value=format_respawn_time(boss['respawn']), inline=False)
-    if "schedule" in boss:
+        embed.add_field(name="🕒 Next spawn", value=boss.get("nextSpawn", "Unknown"), inline=False)
+    elif "schedule" in boss:
         schedule_text = "\n".join(f"- Day {s['day']} at {s['hour']:02}:{s['minute']:02}" for s in boss["schedule"])
         embed.add_field(name="📅 Fixed schedule", value=schedule_text, inline=False)
-    embed.add_field(name="🕒 Next spawn", value=boss.get("nextSpawn", "Unknown"), inline=False)
+        embed.add_field(name="🕒 Next spawn", value=boss.get("nextSpawn", "Unknown"), inline=False)
     await ctx.send(embed=embed)
 
-# ----------------- /next -----------------
+# ----------------- /next Command -----------------
 @bot.command()
 async def next(ctx):
     now = datetime.now()
@@ -204,8 +212,11 @@ async def next(ctx):
         await ctx.send("📭 No upcoming spawns found.")
         return
 
+    # Sort by earliest next spawn
     upcoming.sort(key=lambda x: x[0])
     soonest_time = upcoming[0][0]
+
+    # List all bosses that spawn at the same earliest time
     spawn_list = [(t, name, killer) for t, name, killer in upcoming if t == soonest_time]
 
     embed = discord.Embed(title="🕒 Next Boss Spawn(s)", color=discord.Color.blue())
@@ -214,7 +225,7 @@ async def next(ctx):
 
     await ctx.send(embed=embed)
 
-# ----------------- /boss -----------------
+# ----------------- /boss Command -----------------
 @bot.command()
 async def boss(ctx):
     now = datetime.now()
@@ -245,11 +256,13 @@ async def boss(ctx):
             info_str += f"✏️ Last: {boss['lastKilled']} by {boss.get('lastKilledBy','Unknown')}\n"
         if "respawn" in boss:
             info_str += f"Respawn: {format_respawn_time(boss['respawn'])}\n"
+            info_str += f"Next spawn: {boss.get('nextSpawn', 'Unknown')}\n"
         elif "schedule" in boss:
             info_str += "Fixed schedule:\n"
             for s in boss["schedule"]:
                 info_str += f"- Day {s['day']} at {s['hour']:02}:{s['minute']:02}\n"
-        info_str += f"Next spawn: {boss.get('nextSpawn', 'Unknown')}\n"
+            info_str += f"Next spawn: {boss.get('nextSpawn', 'Unknown')}\n"
+
         embed.add_field(name=boss['name'], value=info_str, inline=False)
         count += 1
 
