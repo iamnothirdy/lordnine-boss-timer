@@ -58,7 +58,14 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
 @bot.command()
-async def kill(ctx, *, name: str):
+async def update(ctx, *, args: str):
+    try:
+        name, *killed_time = args.split()
+        name = name.strip()
+    except ValueError:
+        await ctx.send("❌ Please provide a boss name and time, e.g., `/update Lady Daliah 01:30 AM`.")
+        return
+
     key, boss = find_boss(name, bosses)
 
     if key == "multiple":
@@ -68,46 +75,43 @@ async def kill(ctx, *, name: str):
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
 
+    if not killed_time:
+        await ctx.send("❌ Please provide a time, e.g., `01:30 AM`.")
+        return
+
+    killed_time_str = " ".join(killed_time).upper()
     now = datetime.datetime.now()
 
-    # If already killed before
-    if "lastKilled" in boss:
-        last_killed_time = datetime.datetime.strptime(boss["lastKilled"], "%I:%M %p")
-        last_killed_time = last_killed_time.replace(year=now.year, month=now.month, day=now.day)
+    try:
+        new_kill_time = datetime.datetime.strptime(killed_time_str, "%I:%M %p")
+    except ValueError:
+        await ctx.send("❌ Invalid time format. Use `1:30 AM` or `01:30 PM` format.")
+        return
 
-        if "respawn" in boss:
-            next_spawn = last_killed_time + datetime.timedelta(seconds=boss["respawn"])
-            if now < next_spawn:
-                await ctx.send(
-                    f"⚠️ The **{boss['name']}** has already been killed and recorded "
-                    f"by {boss.get('lastKilledBy','Unknown')} at {boss['lastKilled']}.\n"
-                    f"🕒 Next spawn: **{format_time(next_spawn)}** on {next_spawn.strftime('%Y-%m-%d')}\n"
-                    f"If you wish to update, use `/update {boss['name']} [HH:MM AM/PM]`"
-                )
-                return
-        elif "schedule" in boss:
-            await ctx.send(
-                f"⚠️ The **{boss['name']}** has a fixed schedule and cannot be re-logged with `/kill`.\n"
-                f"Last recorded kill: {boss.get('lastKilled','Unknown')} by {boss.get('lastKilledBy','Unknown')}\n"
-                f"Use `/update {boss['name']} [HH:MM AM/PM]` if needed."
-            )
-            return
+    new_kill_time = new_kill_time.replace(year=now.year, month=now.month, day=now.day)
 
-    # Record fresh kill
-    boss["originalKilled"] = boss.get("originalKilled", format_time(now))
-    boss["originalKilledBy"] = boss.get("originalKilledBy", str(ctx.author))
-    boss["lastKilled"] = format_time(now)
+    original_time = boss.get("lastKilled", "Unknown")
+    original_by = boss.get("lastKilledBy", "Unknown")
+
+    boss["lastKilled"] = format_time(new_kill_time)
     boss["lastKilledBy"] = str(ctx.author)
 
     if "respawn" in boss:
-        next_spawn = now + datetime.timedelta(seconds=boss["respawn"])
+        next_spawn = new_kill_time + datetime.timedelta(seconds=boss["respawn"])
         boss["nextSpawn"] = format_time(next_spawn)
         await ctx.send(
-            f"☠️ {boss['name']} killed at {format_time(now)} by {ctx.author}\n"
+            f"✏️ **{boss['name']} Updated Kill Info**\n"
+            f"🟢 **Original:** {original_time} by {original_by}\n"
+            f"✏️ **Updated:** {format_time(new_kill_time)} by {ctx.author}\n"
             f"🕒 Next spawn: **{format_time(next_spawn)}** on {next_spawn.strftime('%Y-%m-%d')}"
         )
     else:
-        await ctx.send(f"⚠️ {boss['name']} has a fixed schedule, not a respawn timer.")
+        await ctx.send(
+            f"✏️ **{boss['name']} Updated Kill Info**\n"
+            f"🟢 **Original:** {original_time} by {original_by}\n"
+            f"✏️ **Updated:** {format_time(new_kill_time)} by {ctx.author}\n"
+            f"⚠️ This boss has a fixed schedule, not a respawn timer."
+        )
 
     with open("bosses.json", "w") as f:
         json.dump(list(bosses.values()), f, indent=2)
