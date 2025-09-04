@@ -188,28 +188,38 @@ async def info(ctx, *, name: str):
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
 
-    # Load kill/respawn state (assuming stored in kills.json or dict)
-    kills = load_kills()
-    boss_state = kills.get(boss['name'], {})
-
-    # Respawn info
-    respawn_time = format_respawn_time(int(boss['respawn']))
-    next_spawn = boss_state.get("next_spawn", "Unknown")
-    last_killed_time = boss_state.get("last_killed", "Never killed")
-    last_killed_by = boss_state.get("killed_by", "Unknown")
-
-    # Build embed
     embed = discord.Embed(
         title=f"📜 {boss['name']} Info",
-        color=discord.Color.green()
+        color=discord.Color.blue()
     )
-    embed.add_field(
-        name="✏️ Last killed",
-        value=f"{last_killed_time} by {last_killed_by}" if last_killed_time != "Never killed" else "Never killed",
-        inline=False
-    )
-    embed.add_field(name="⏳ Respawn", value=respawn_time, inline=False)
-    embed.add_field(name="🕒 Next spawn", value=next_spawn, inline=False)
+
+    # Original kill
+    if "originalKilled" in boss:
+        embed.add_field(
+            name="🟢 Original killed",
+            value=f"{boss['originalKilled']} by {boss.get('originalKilledBy','Unknown')}",
+            inline=False
+        )
+
+    # Last killed
+    if "lastKilled" in boss:
+        embed.add_field(
+            name="✏️ Last killed",
+            value=f"{boss['lastKilled']} by {boss.get('lastKilledBy','Unknown')}",
+            inline=False
+        )
+
+    # Respawn / schedule
+    if "respawn" in boss:
+        respawn_time = format_respawn_time(int(boss['respawn']))
+        embed.add_field(name="⏳ Respawn", value=respawn_time, inline=False)
+        embed.add_field(name="🕒 Next spawn", value=boss.get("nextSpawn", "Unknown"), inline=False)
+    elif "schedule" in boss:
+        schedule_text = "\n".join(
+            f"- Day {s['day']} at {s['hour']:02}:{s['minute']:02}"
+            for s in boss["schedule"]
+        )
+        embed.add_field(name="📅 Fixed schedule", value=schedule_text, inline=False)
 
     await ctx.send(embed=embed)
 
