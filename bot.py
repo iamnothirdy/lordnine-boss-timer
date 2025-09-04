@@ -182,14 +182,21 @@ async def next(ctx):
     now = datetime.now()
     upcoming = []
 
+    def json_to_python_weekday(json_day):
+        """
+        Converts JSON day to Python weekday.
+        JSON: Sunday=0, Monday=1, ..., Saturday=6
+        Python: Monday=0, ..., Sunday=6
+        """
+        if json_day == 0:
+            return 6  # Sunday
+        return json_day - 1
+
     def next_schedule_spawn(boss, now):
         """Calculate the next spawn datetime for a schedule-based boss."""
         next_times = []
         for s in boss.get("schedule", []):
-            json_day = s["day"]  # Sunday=0
-            # Convert to Python weekday (Monday=0)
-            python_weekday = (json_day - 1) % 7
-            # Calculate days ahead
+            python_weekday = json_to_python_weekday(s["day"])
             days_ahead = (python_weekday - now.weekday() + 7) % 7
             spawn_date = now + timedelta(days=days_ahead)
             spawn_time = spawn_date.replace(hour=s["hour"], minute=s["minute"], second=0, microsecond=0)
@@ -217,7 +224,8 @@ async def next(ctx):
             next_spawn_time = next_schedule_spawn(boss, now)
 
         if next_spawn_time:
-            upcoming.append((next_spawn_time, boss["name"], boss.get("lastKilledBy", "Unknown")))
+            last_killed_by = boss.get("lastKilledBy", "Fixed schedule") if boss.get("special") else boss.get("lastKilledBy", "Unknown")
+            upcoming.append((next_spawn_time, boss["name"], last_killed_by))
 
     if not upcoming:
         await ctx.send("📭 No upcoming spawns found.")
@@ -235,6 +243,7 @@ async def next(ctx):
         embed.add_field(name=bname, value=f"⏰ {t.strftime('%A %I:%M %p')} | Last killed by: {killer}", inline=False)
 
     await ctx.send(embed=embed)
+
 
 
 # ----------------- /boss Command -----------------
