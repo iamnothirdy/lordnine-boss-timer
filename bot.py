@@ -188,40 +188,31 @@ async def info(ctx, *, name: str):
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
 
-    respawn_time = format_respawn_time(int(boss['respawn']))
-    next_spawn = boss.get("next_spawn", "Unknown")
+    # Load kill/respawn state (assuming stored in kills.json or dict)
+    kills = load_kills()
+    boss_state = kills.get(boss['name'], {})
 
+    # Respawn info
+    respawn_time = format_respawn_time(int(boss['respawn']))
+    next_spawn = boss_state.get("next_spawn", "Unknown")
+    last_killed_time = boss_state.get("last_killed", "Never killed")
+    last_killed_by = boss_state.get("killed_by", "Unknown")
+
+    # Build embed
     embed = discord.Embed(
         title=f"📜 {boss['name']} Info",
-        color=discord.Color.blue()
+        color=discord.Color.green()
+    )
+    embed.add_field(
+        name="✏️ Last killed",
+        value=f"{last_killed_time} by {last_killed_by}" if last_killed_time != "Never killed" else "Never killed",
+        inline=False
     )
     embed.add_field(name="⏳ Respawn", value=respawn_time, inline=False)
     embed.add_field(name="🕒 Next spawn", value=next_spawn, inline=False)
 
     await ctx.send(embed=embed)
 
-
-
-
-
-    boss = bosses[name]
-    msg = f"📜 **{boss['name']} Info**\n"
-
-    if "originalKilled" in boss:
-        msg += f"🟢 **Original killed:** {boss['originalKilled']} by {boss.get('originalKilledBy','Unknown')}\n"
-
-    if "lastKilled" in boss:
-        msg += f"✏️ **Last killed:** {boss['lastKilled']} by {boss.get('lastKilledBy','Unknown')}\n"
-
-    if "respawn" in boss:
-        msg += f"⏳ Respawn every {boss['respawn']//3600}h\n"
-        msg += f"🕒 Next spawn: {boss.get('nextSpawn', 'Unknown')}\n"
-    elif "schedule" in boss:
-        msg += "📅 Fixed spawn schedule:\n"
-        for s in boss["schedule"]:
-            msg += f"- Day {s['day']} at {s['hour']:02}:{s['minute']:02}\n"
-
-    await ctx.send(msg)
 
 
 # /next command
