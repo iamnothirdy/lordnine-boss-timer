@@ -62,15 +62,21 @@ def get_next_spawn(boss, now):
         # Calculate the next scheduled spawn
         next_times = []
         for s in boss["schedule"]:
-            # Day 0 = Sunday ... Day 6 = Saturday
-            days_ahead = (s["day"] - now.weekday() - 1) % 7 + 1
+            # JSON: Sunday=0, Monday=1 ... Saturday=6
+            target_weekday = s["day"]  # 0=Sunday
+            # Python weekday: Monday=0 ... Sunday=6
+            # Convert JSON day to Python weekday
+            python_weekday = (target_weekday - 1) % 7  # Sunday=6, Monday=0, etc.
+            days_ahead = (python_weekday - now.weekday() + 7) % 7
             spawn_date = now + timedelta(days=days_ahead)
             spawn_time = spawn_date.replace(hour=s["hour"], minute=s["minute"], second=0, microsecond=0)
+            # If it's today but already passed, move 7 days forward
             if spawn_time <= now:
                 spawn_time += timedelta(days=7)
             next_times.append(spawn_time)
         return min(next_times) if next_times else None
     return None
+
 
 
 def save_bosses():
