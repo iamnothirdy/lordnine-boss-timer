@@ -212,18 +212,15 @@ async def next(ctx):
         await ctx.send("📭 No upcoming spawns found.")
         return
 
-    # Sort by earliest next spawn
+    # Sort all upcoming spawns by time
     upcoming.sort(key=lambda x: x[0])
-    soonest_time = upcoming[0][0]
-
-    # List all bosses that spawn at the same earliest time
-    spawn_list = [(t, name, killer) for t, name, killer in upcoming if t == soonest_time]
 
     embed = discord.Embed(title="🕒 Next Boss Spawn(s)", color=discord.Color.blue())
-    for t, bname, killer in spawn_list:
+    for t, bname, killer in upcoming[:25]:  # show first 25
         embed.add_field(name=bname, value=f"⏰ {t.strftime('%A %I:%M %p')} | Last killed by: {killer}", inline=False)
 
     await ctx.send(embed=embed)
+
 
 # ----------------- /boss Command -----------------
 @bot.command()
