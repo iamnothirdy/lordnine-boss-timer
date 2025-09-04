@@ -19,16 +19,17 @@ def find_boss(name: str, bosses: dict):
 
     # Exact match first
     if name in bosses:
-        return bosses[name]
+        return name, bosses[name]
 
     # Prefix match (e.g., "lady" -> "lady daliah")
-    matches = [boss for boss in bosses.values() if boss["name"].lower().startswith(name)]
+    matches = [(key, boss) for key, boss in bosses.items() if key.startswith(name)]
 
     if len(matches) == 1:
-        return matches[0]
+        return matches[0]  # returns (key, boss)
     elif len(matches) > 1:
-        return "multiple"  # ambiguous match
-    return None
+        return "multiple", None
+    return None, None
+
 
 def format_time(dt):
     return dt.strftime("%I:%M %p")
@@ -43,13 +44,18 @@ async def on_ready():
 
 @bot.command()
 async def kill(ctx, *, name: str):
-    boss = find_boss(name, bosses)
-    if boss == "multiple":
+    key, boss = find_boss(name, bosses)
+
+    if key == "multiple":
         await ctx.send(f"⚠️ Multiple bosses start with '{name}'. Please be more specific.")
         return
     if not boss:
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
+
+    boss['last_killed'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    await ctx.send(f"✅ Marked **{boss['name']}** as killed at {boss['last_killed']}")
+
 
 
     boss = bosses[name]
@@ -158,13 +164,17 @@ async def update(ctx, *, args: str):
 # /info command
 @bot.command()
 async def info(ctx, *, name: str):
-    boss = find_boss(name, bosses)
-    if boss == "multiple":
+    key, boss = find_boss(name, bosses)
+
+    if key == "multiple":
         await ctx.send(f"⚠️ Multiple bosses start with '{name}'. Please be more specific.")
         return
     if not boss:
         await ctx.send(f"❌ Boss '{name}' not found.")
         return
+
+    await ctx.send(f"📌 Info for **{boss['name']}**:\nRespawn: {boss['respawn']} minutes")
+
 
 
     boss = bosses[name]
